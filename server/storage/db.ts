@@ -59,8 +59,8 @@ const DEFAULT_USERS: UserProfile[] = [
 ];
 
 export class StorageService {
-  private dataDir = path.resolve(process.cwd(), '.data');
-  private dbPath = path.resolve(process.cwd(), '.data', 'app_data.json');
+  private dataDir = process.env.VERCEL ? path.resolve('/tmp', '.data') : path.resolve(process.cwd(), '.data');
+  private dbPath = process.env.VERCEL ? path.resolve('/tmp', '.data', 'app_data.json') : path.resolve(process.cwd(), '.data', 'app_data.json');
   private activeUserId: string = 'usr_default_samuel';
   private data: DatabaseSchema = {
     users: [...DEFAULT_USERS],

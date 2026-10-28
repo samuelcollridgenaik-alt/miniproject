@@ -66,11 +66,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
+  // Safe JSON parsing helper to prevent Unexpected Token errors on HTML 404/500 responses
+  const parseJson = async (res: Response) => {
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      if (res.status === 404) {
+        throw new Error('Backend API endpoint not found (404). Serverless function is initializing.');
+      }
+      throw new Error(`Server returned non-JSON response (${res.status} ${res.statusText || 'Error'}).`);
+    }
+    return res.json();
+  };
+
   // Fetch registered users
   const fetchUsers = async () => {
     try {
       const res = await fetch('/api/auth/users');
-      const data = await res.json();
+      const data = await parseJson(res);
       if (data.success && Array.isArray(data.users)) {
         setAllUsers(data.users);
       }
@@ -101,7 +113,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: signInEmail, password: signInPassword }),
       });
-      const data = await res.json();
+      const data = await parseJson(res);
       if (!res.ok || !data.success) {
         setErrorMsg(data.error || 'Login failed. Please verify credentials.');
         return;
@@ -128,7 +140,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password: 'password123' }),
       });
-      const data = await res.json();
+      const data = await parseJson(res);
       if (data.success) {
         localStorage.setItem('cognify_user_id', data.user.id);
         if (data.token) localStorage.setItem('cognify_auth_token', data.token);
@@ -166,7 +178,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         }),
       });
 
-      const data = await res.json();
+      const data = await parseJson(res);
       if (!res.ok || !data.success) {
         setErrorMsg(data.error || 'Registration failed.');
         return;
@@ -194,7 +206,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id }),
       });
-      const data = await res.json();
+      const data = await parseJson(res);
       if (data.success) {
         localStorage.setItem('cognify_user_id', user.id);
         onLoginSuccess(data.user);
@@ -226,7 +238,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
           groqApiKey: vaultGroqKey.trim() || undefined,
         }),
       });
-      const data = await res.json();
+      const data = await parseJson(res);
       if (data.success) {
         setSuccessMsg('Your personal API keys have been saved to your account vault.');
         onLoginSuccess(data.user);

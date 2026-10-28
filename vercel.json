@@ -1,29 +1,13 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "services": {
-    "app": {
-      "root": ".",
-      "framework": "vite",
-      "bindings": [
-        {
-          "type": "service",
-          "service": "backend_python",
-          "format": "url",
-          "env": "BACKEND_PYTHON_URL"
-        }
-      ]
-    },
-    "backend_python": {
-      "root": "backend_python",
-      "framework": "fastapi"
-    }
-  },
+  "version": 2,
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "/api"
+    },
+    {
       "source": "/(.*)",
-      "destination": {
-        "service": "app"
-      }
+      "destination": "/index.html"
     }
   ]
 }
