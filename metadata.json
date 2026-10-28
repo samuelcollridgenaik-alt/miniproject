@@ -1,0 +1,6 @@
+{
+  "name": "Cognify AI — Notion-Style Academic Intelligence System",
+  "description": "Student workspace and Multi-LLM RAG intelligence system powered by Google Gemini 3.8 Flash and Groq Llama 3.3 with authentic citation retrieval, active recall flashcards, adaptive quizzes, and revision planning.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
