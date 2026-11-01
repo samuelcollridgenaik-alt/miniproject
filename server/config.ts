@@ -5,9 +5,14 @@ export const CONFIG = {
   // Model Providers
   gemini: {
     apiKey: process.env.GEMINI_API_KEY || '',
-    model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+    model: process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite',
+    reasoningModel: 'gemini-3.8-flash',
     embeddingModel: 'gemini-embedding-2-preview',
     timeoutMs: 25000,
+  },
+  geminiLite: {
+    model: 'gemini-3.1-flash-lite',
+    timeoutMs: 15000,
   },
   groq: {
     apiKey: process.env.GROQ_API_KEY || '',

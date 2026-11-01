@@ -1,13 +1,25 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { LLMProvider, LLMProviderId, LLMRequestOptions, LLMResponse } from '../types.js';
 import { CONFIG } from '../config.js';
 import { executionLogger } from './executionLogger.js';
 
 export class GeminiAdapter implements LLMProvider {
-  public id: LLMProviderId = 'gemini';
-  public name = 'Google Gemini';
-  public family = 'Gemini 3.8';
-  public defaultModel = CONFIG.gemini.model;
+  public id: LLMProviderId;
+  public name: string;
+  public family: string;
+  public defaultModel: string;
+
+  constructor(
+    id: LLMProviderId = 'gemini',
+    name = 'Google Gemini 3.8 Flash',
+    family = 'Gemini 3.8',
+    defaultModel = CONFIG.gemini.model
+  ) {
+    this.id = id;
+    this.name = name;
+    this.family = family;
+    this.defaultModel = defaultModel;
+  }
 
   private getClient(apiKeyOverride?: string): GoogleGenAI | null {
     const key = apiKeyOverride || CONFIG.gemini.apiKey;
@@ -39,13 +51,19 @@ export class GeminiAdapter implements LLMProvider {
       const client = this.getClient(apiKeyOverride);
       if (!client) throw new Error('Client initialization failed');
 
+      const config: any = {};
+      if (this.defaultModel === 'gemini-3.8-flash') {
+        config.thinkingConfig = { thinkingLevel: ThinkingLevel.LOW };
+      }
+
       const pingPromise = client.models.generateContent({
         model: this.defaultModel,
         contents: 'Ping test. Reply with: PONG',
+        config: Object.keys(config).length > 0 ? config : undefined,
       });
 
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Gemini ping timed out after 6000ms')), 6000)
+        setTimeout(() => reject(new Error('Gemini ping timed out after 14000ms')), 14000)
       );
 
       const response = await Promise.race([pingPromise, timeoutPromise]);
@@ -95,18 +113,25 @@ export class GeminiAdapter implements LLMProvider {
       if (options?.systemInstruction) {
         config.systemInstruction = options.systemInstruction;
       }
-      if (typeof options?.temperature === 'number') {
-        config.temperature = options.temperature;
-      }
       if (options?.jsonMode) {
         config.responseMimeType = 'application/json';
       }
+      if (this.defaultModel === 'gemini-3.8-flash') {
+        config.thinkingConfig = { thinkingLevel: ThinkingLevel.LOW };
+      }
 
-      const response = await client.models.generateContent({
+      const timeoutMs = options?.timeoutMs || CONFIG.gemini.timeoutMs || 25000;
+      const generatePromise = client.models.generateContent({
         model: this.defaultModel,
         contents: prompt,
         config: Object.keys(config).length > 0 ? config : undefined,
       });
+
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`Gemini ${this.defaultModel} request timed out after ${timeoutMs}ms`)), timeoutMs)
+      );
+
+      const response = await Promise.race([generatePromise, timeoutPromise]);
 
       const latencyMs = Date.now() - startTime;
       const outputText = response.text || '';
@@ -159,10 +184,16 @@ export class GeminiAdapter implements LLMProvider {
       const client = this.getClient();
       if (!client) return null;
 
-      const response = await client.models.embedContent({
+      const embedPromise = client.models.embedContent({
         model: CONFIG.gemini.embeddingModel,
         contents: text,
       });
+
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Embedding timeout')), 4000)
+      );
+
+      const response = await Promise.race([embedPromise, timeoutPromise]);
 
       const embeddingValues = (response as any)?.embedding?.values;
       if (Array.isArray(embeddingValues) && embeddingValues.length > 0) {
@@ -170,10 +201,12 @@ export class GeminiAdapter implements LLMProvider {
       }
       return null;
     } catch (err) {
-      console.warn('Gemini embedContent failed, falling back to term vectorizer:', err);
+      console.warn('Gemini embedContent failed/timed out, using fast term vectorizer');
       return null;
     }
   }
 }
 
-export const geminiAdapter = new GeminiAdapter();
+export const geminiAdapter = new GeminiAdapter('gemini', 'Google Gemini 3.8 Flash', 'Gemini 3.8', CONFIG.gemini.model);
+export const geminiLiteAdapter = new GeminiAdapter('gemini-lite', 'Google Gemini 3.1 Flash-Lite', 'Gemini Lite', CONFIG.geminiLite.model);
+

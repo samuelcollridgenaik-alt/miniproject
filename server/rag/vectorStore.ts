@@ -7,8 +7,8 @@ import path from 'path';
 export class VectorStore {
   private chunks: Map<string, DocumentChunk> = new Map();
   private vectorCache: Map<string, number[]> = new Map();
-  private dataDir = path.resolve(process.cwd(), '.data');
-  private storeFile = path.resolve(process.cwd(), '.data', 'vector_index.json');
+  private dataDir = process.env.VERCEL ? path.resolve('/tmp', '.data') : path.resolve(process.cwd(), '.data');
+  private storeFile = process.env.VERCEL ? path.resolve('/tmp', '.data', 'vector_index.json') : path.resolve(process.cwd(), '.data', 'vector_index.json');
 
   constructor() {
     this.ensureStorageDir();

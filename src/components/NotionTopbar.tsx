@@ -81,16 +81,16 @@ export const NotionTopbar: React.FC<NotionTopbarProps> = ({
         </div>
       </div>
 
-      {/* Center: Multi-LLM Live Status Badges */}
-      <div className="hidden lg:flex items-center gap-2">
-        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-800/40 text-[11px] text-blue-700 dark:text-blue-300 font-medium">
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
-          <span>Gemini 3.8 Flash (Grounded RAG)</span>
-        </div>
-        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/40 text-[11px] text-amber-700 dark:text-amber-300 font-medium">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-          <span>Groq Llama 3.3 (Cards & Quizzes)</span>
-        </div>
+      {/* Center: Live Engine Status (Zero-Pill Typography) */}
+      <div className="hidden lg:flex items-center gap-2 text-xs text-slate-500 dark:text-zinc-400">
+        <span className="flex items-center gap-1.5 font-medium text-indigo-600 dark:text-indigo-400">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span>Google Gemini AI</span>
+        </span>
+        <span aria-hidden="true" className="text-slate-300 dark:text-zinc-700">·</span>
+        <span className="text-[11px] text-slate-600 dark:text-zinc-400">Grounded RAG & Adaptive Recall</span>
+        <span aria-hidden="true" className="text-slate-300 dark:text-zinc-700">·</span>
+        <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400">Free Tier</span>
       </div>
 
       {/* Right Controls: Pomodoro, Theme, Search, Quick Action */}

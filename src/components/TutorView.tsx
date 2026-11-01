@@ -15,30 +15,35 @@ export const TutorView: React.FC<TutorViewProps> = ({
 }) => {
   const [question, setQuestion] = useState('');
   const [selectedDocId, setSelectedDocId] = useState<string>('');
+  const [tutorMode, setTutorMode] = useState<'kid' | 'scholar'>('scholar');
   const [loading, setLoading] = useState(false);
   const [answer, setAnswer] = useState<GroundedAnswerData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const sampleQuestions = [
-    'What is the difference between paging and segmentation in memory management?',
-    'Explain the ACID properties of database transactions with examples.',
-    'How does the Raft consensus algorithm handle leader election?',
-    'What causes external fragmentation and how can compaction resolve it?',
+    { title: 'Paging vs Segmentation', prompt: 'What is the difference between paging and segmentation in memory management?', icon: '🍕' },
+    { title: 'ACID Properties', prompt: 'Explain the ACID properties of database transactions with simple examples.', icon: '🏦' },
+    { title: 'Raft Consensus', prompt: 'How does the Raft consensus algorithm handle leader election like a classroom vote?', icon: '🤝' },
+    { title: 'Cache & Memory', prompt: 'How does CPU cache memory speed up programs like a kitchen pantry?', icon: '⚡' },
   ];
 
   const handleAsk = async (queryToAsk?: string) => {
-    const q = queryToAsk || question;
-    if (!q.trim()) return;
+    const rawQ = queryToAsk || question;
+    if (!rawQ.trim()) return;
 
     setLoading(true);
     setError(null);
+
+    const formattedQuestion = tutorMode === 'kid'
+      ? `${rawQ}\n\n[Persona: Explain this simply and cheerfully with everyday analogies that even a 10-year-old or beginner student can instantly understand! Break down tough terms into friendly concepts.]`
+      : rawQ;
 
     try {
       const res = await fetch('/api/tutor/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          question: q,
+          question: formattedQuestion,
           documentIdFilter: selectedDocId || undefined,
           preferredProvider: 'gemini',
         }),
@@ -59,29 +64,54 @@ export const TutorView: React.FC<TutorViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Google NotebookLM Style Prompt Card */}
-      <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm">
+      {/* Cognify Tutor Card */}
+      <div className="bg-white dark:bg-[#202020] rounded-2xl border border-slate-200/90 dark:border-zinc-800 p-6 shadow-xs transition-colors">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">
-                Academic Tutor & Grounded Q&A
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                Cognify Academic Tutor
               </h2>
-              <p className="text-xs text-slate-500">
-                Powered by Google Gemini 3.8 Flash • Strictly citations-grounded
+              <p className="text-xs text-slate-500 dark:text-zinc-400">
+                Powered by Google Gemini AI · Grounded in verified course citations
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-500 font-medium">Source Document:</label>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Persona Mode Switcher */}
+            <div className="flex items-center p-1 bg-slate-100 dark:bg-zinc-800 rounded-lg text-xs">
+              <button
+                type="button"
+                onClick={() => setTutorMode('kid')}
+                className={`px-3 py-1 font-medium rounded-md transition ${
+                  tutorMode === 'kid'
+                    ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-300 shadow-xs'
+                    : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900'
+                }`}
+              >
+                🧸 Simple & Fun
+              </button>
+              <button
+                type="button"
+                onClick={() => setTutorMode('scholar')}
+                className={`px-3 py-1 font-medium rounded-md transition ${
+                  tutorMode === 'scholar'
+                    ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-300 shadow-xs'
+                    : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900'
+                }`}
+              >
+                🎓 Academic Pro
+              </button>
+            </div>
+
             <select
               value={selectedDocId}
               onChange={(e) => setSelectedDocId(e.target.value)}
-              className="bg-slate-50 border border-slate-300 text-xs text-slate-800 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
+              className="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 text-xs text-slate-800 dark:text-zinc-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium"
             >
               <option value="">All Uploaded Course Notes</option>
               {documents.map((doc) => (
@@ -95,14 +125,14 @@ export const TutorView: React.FC<TutorViewProps> = ({
 
         {/* Guided banner if no documents uploaded */}
         {documents.length === 0 && (
-          <div className="mb-4 p-4 rounded-2xl bg-blue-50/70 border border-blue-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-blue-900">
+          <div className="mb-4 p-4 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-800/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-indigo-950 dark:text-indigo-200">
             <div>
-              <span className="font-semibold text-blue-950">Quick Start for Evaluation:</span>{' '}
-              Load standard MCA Operating Systems & Distributed Architecture notes to immediately test grounded Q&A with real citations.
+              <span className="font-semibold text-indigo-950 dark:text-white">Quick Start:</span>{' '}
+              Load standard MCA Operating Systems & Distributed Architecture notes to test grounded Q&A with real citations.
             </div>
             <button
               onClick={onSeedSample}
-              className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs transition shadow-xs whitespace-nowrap"
+              className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg text-xs transition shadow-xs whitespace-nowrap"
             >
               Load Sample Notes
             </button>
@@ -121,44 +151,49 @@ export const TutorView: React.FC<TutorViewProps> = ({
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Ask an academic question (e.g. 'Explain the ACID properties' or 'Contrast paging vs segmentation')..."
-            className="w-full bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 rounded-2xl pl-4 pr-32 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-inner"
+            placeholder={
+              tutorMode === 'kid'
+                ? "Ask anything! (e.g. 'Explain how computer memory works like a pizza box' or 'Why do transactions need ACID?')..."
+                : "Ask an academic question (e.g. 'Explain ACID properties' or 'Contrast paging vs segmentation')..."
+            }
+            className="w-full bg-slate-50 dark:bg-zinc-800/80 hover:bg-white dark:hover:bg-zinc-800 focus:bg-white dark:focus:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl pl-4 pr-32 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition shadow-inner"
           />
           <button
             type="submit"
             disabled={loading || !question.trim()}
-            className="absolute right-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-medium text-xs rounded-xl flex items-center gap-1.5 transition shadow-xs"
+            className="absolute right-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-zinc-700 text-white font-medium text-xs rounded-lg flex items-center gap-1.5 transition shadow-xs"
           >
             {loading ? (
               <>
                 <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Searching...</span>
+                <span>Thinking...</span>
               </>
             ) : (
               <>
-                <span>Ask Gemini</span>
+                <span>Ask Cognify</span>
                 <Send className="w-3.5 h-3.5" />
               </>
             )}
           </button>
         </form>
 
-        {/* Quick sample prompt chips */}
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
-            <HelpCircle className="w-3 h-3 text-slate-400" /> Syllabus Prompts:
+        {/* Quick sample prompt chips with icons */}
+        <div className="mt-3.5 flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium flex items-center gap-1">
+            <HelpCircle className="w-3 h-3 text-slate-400 dark:text-zinc-500" /> Quick Starters:
           </span>
           {sampleQuestions.map((sq, i) => (
             <button
               key={i}
               type="button"
               onClick={() => {
-                setQuestion(sq);
-                handleAsk(sq);
+                setQuestion(sq.prompt);
+                handleAsk(sq.prompt);
               }}
-              className="text-[11px] bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 text-slate-600 border border-slate-200 rounded-full px-3 py-1 transition"
+              className="text-[11px] bg-slate-100 dark:bg-zinc-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-700 dark:hover:text-indigo-300 text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700 rounded-md px-2.5 py-1 transition flex items-center gap-1"
             >
-              {sq}
+              <span>{sq.icon}</span>
+              <span>{sq.title}</span>
             </button>
           ))}
         </div>
@@ -175,66 +210,64 @@ export const TutorView: React.FC<TutorViewProps> = ({
         </div>
       )}
 
-      {/* Answer Output (Google Doc Style) */}
+      {/* Answer Output (Cognify Clean Reader Style) */}
       {answer && (
-        <div className="bg-white rounded-3xl border border-slate-200/90 p-8 shadow-sm space-y-6">
+        <div className="bg-white dark:bg-[#202020] rounded-2xl border border-slate-200/90 dark:border-zinc-800 p-6 md:p-8 shadow-xs space-y-6">
           {/* Metadata bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-zinc-800 text-xs text-slate-500 dark:text-zinc-400">
+            <div className="flex items-center gap-3">
               {answer.isSufficientlyGrounded ? (
-                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  Verified Grounded ({Math.round(answer.groundingConfidence * 100)}% Confidence)
+                <span className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Verified Citations ({Math.round(answer.groundingConfidence * 100)}% match)</span>
                 </span>
               ) : (
-                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold">
-                  <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
-                  Insufficient Context in Uploaded Materials
+                <span className="flex items-center gap-1.5 font-medium text-amber-600 dark:text-amber-400">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>General Knowledge Synthesis</span>
                 </span>
               )}
 
-              <span className="text-xs text-slate-500">
-                Model: <strong className="text-slate-800">{answer.model}</strong>
-              </span>
-              <span className="text-xs text-slate-500">
-                Latency: <strong className="text-slate-800">{answer.latencyMs}ms</strong>
-              </span>
+              <span aria-hidden="true" className="text-slate-300 dark:text-zinc-700">·</span>
+              <span>Model: <strong className="text-slate-800 dark:text-zinc-200 font-mono text-[11px]">{answer.model}</strong></span>
+              <span aria-hidden="true" className="text-slate-300 dark:text-zinc-700">·</span>
+              <span>Response: <strong className="text-slate-800 dark:text-zinc-200 font-mono text-[11px]">{answer.latencyMs}ms</strong></span>
             </div>
 
-            <div className="text-xs text-slate-500">
-              Retrieved Chunks: <strong className="text-blue-600 font-semibold">{answer.retrievedChunksCount}</strong>
+            <div className="text-slate-500 dark:text-zinc-400 font-mono text-[11px]">
+              {answer.retrievedChunksCount} sources checked
             </div>
           </div>
 
           {/* Answer Body */}
-          <div className="text-slate-800 text-sm leading-relaxed whitespace-pre-wrap font-sans">
+          <div className="text-slate-800 dark:text-zinc-200 text-sm leading-relaxed whitespace-pre-wrap font-sans">
             {answer.answer}
           </div>
 
           {/* Verified Citations Section */}
           {answer.citations.length > 0 && (
-            <div className="pt-6 border-t border-slate-100">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
-                <BookOpen className="w-3.5 h-3.5 text-blue-600" />
-                Verified Citations & Excerpt Evidence ({answer.citations.length})
+            <div className="pt-6 border-t border-slate-100 dark:border-zinc-800">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 mb-3 flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                Verified Course Excerpts ({answer.citations.length})
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {answer.citations.map((cite, i) => (
                   <div
                     key={i}
-                    className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs space-y-1.5"
+                    className="bg-slate-50 dark:bg-zinc-850 border border-slate-200 dark:border-zinc-800 rounded-xl p-3.5 text-xs space-y-1.5"
                   >
-                    <div className="flex items-center justify-between font-semibold text-slate-900">
-                      <span className="flex items-center gap-1.5 text-blue-700">
-                        <FileText className="w-3.5 h-3.5 text-blue-500" />
-                        [Doc: "{cite.source}", {cite.pageOrSlide ? `Page/Slide ${cite.pageOrSlide}` : 'Section'}]
+                    <div className="flex items-center justify-between font-medium text-slate-900 dark:text-white">
+                      <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 truncate">
+                        <FileText className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{cite.source}</span>
                       </span>
-                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-mono px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 shrink-0">
                         {(cite.relevanceScore * 100).toFixed(0)}% match
                       </span>
                     </div>
-                    <p className="text-slate-600 italic bg-white p-2.5 rounded-xl border border-slate-200/80 text-[11px] leading-relaxed">
+                    <p className="text-slate-600 dark:text-zinc-400 italic bg-white dark:bg-zinc-800 p-2.5 rounded-lg border border-slate-200/80 dark:border-zinc-700/60 text-[11px] leading-relaxed">
                       "{cite.quoteSnippet}"
                     </p>
                   </div>

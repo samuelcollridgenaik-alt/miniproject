@@ -39,25 +39,50 @@ export class RagPipeline {
 
     const providerId = options?.preferredProvider || 'gemini';
 
-    // If context is completely insufficient or no documents indexed
+    // If context is insufficient or no documents indexed, synthesize a clear foundational answer
     if (!isSufficient || results.length === 0) {
-      return {
-        requestId: `ground_${Date.now()}`,
-        provider: providerId,
-        model: 'rag-engine',
-        latencyMs: 12,
-        question,
-        answer: 'INSUFFICIENT_RETRIEVED_CONTEXT: The uploaded course materials do not contain sufficient verified information to answer this question reliably. Under strict academic grounding rules, an answer cannot be synthesized without authentic source evidence.',
-        isSufficientlyGrounded: false,
-        groundingConfidence: Math.round(maxScore * 100) / 100,
-        citations: results.map((r) => ({
-          source: r.chunk.documentTitle,
-          pageOrSlide: r.chunk.pageOrSlideNumber,
-          quoteSnippet: r.chunk.text.substring(0, 140) + '...',
-          relevanceScore: r.similarityScore,
-        })),
-        retrievedChunksCount: results.length,
-      };
+      try {
+        const fallbackPrompt = `The student asked: "${question}".
+Provide an encouraging, clear, and structured academic explanation. Include an intuitive analogy (easy enough for anyone to understand), key technical definitions, and practical examples.`;
+
+        const llmResponse = await taskRouter.executeTask('tutor', fallbackPrompt, {
+          systemInstruction: 'You are Cognify AI, an engaging and clear academic intelligence tutor. Structure explanations with clean headings, intuitive analogies, and bullet points.',
+          preferredProvider: providerId,
+          apiKeyOverride: options?.apiKeyOverride,
+        });
+
+        return {
+          requestId: llmResponse.requestId,
+          provider: llmResponse.provider,
+          model: llmResponse.model,
+          latencyMs: llmResponse.latencyMs,
+          question,
+          answer: `> 💡 **General Academic Knowledge:** *No uploaded course notes directly matched this query. Here is a foundational explanation synthesized by Cognify AI. (Upload your syllabus or lecture notes in the Documents tab for exact slide/page citations!)*\n\n${llmResponse.text}`,
+          isSufficientlyGrounded: false,
+          groundingConfidence: results.length > 0 ? Math.round(maxScore * 100) / 100 : 0.5,
+          citations: results.map((r) => ({
+            source: r.chunk.documentTitle,
+            pageOrSlide: r.chunk.pageOrSlideNumber,
+            quoteSnippet: r.chunk.text.substring(0, 140) + '...',
+            relevanceScore: r.similarityScore,
+          })),
+          retrievedChunksCount: results.length,
+          usage: llmResponse.usage,
+        };
+      } catch (err: any) {
+        return {
+          requestId: `ground_${Date.now()}`,
+          provider: providerId,
+          model: 'gemini',
+          latencyMs: 12,
+          question,
+          answer: `I could not find matching notes in your vault for "${question}". Upload your lecture notes or slides in the Documents tab to enable verified study assistance!`,
+          isSufficientlyGrounded: false,
+          groundingConfidence: 0,
+          citations: [],
+          retrievedChunksCount: 0,
+        };
+      }
     }
 
     // Format retrieved passages for the LLM

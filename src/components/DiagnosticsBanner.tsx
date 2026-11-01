@@ -7,6 +7,15 @@ interface DiagnosticsBannerProps {
 }
 
 export const DiagnosticsBanner: React.FC<DiagnosticsBannerProps> = ({ providers }) => {
+  const gemini = providers.find((p) => p.id === 'gemini');
+  const geminiLite = providers.find((p) => p.id === 'gemini-lite');
+  const hasHealthyGemini = (gemini && gemini.status === 'online') || (geminiLite && geminiLite.status === 'online');
+
+  // If Google Gemini is active and online, everything works smoothly without warning banners
+  if (hasHealthyGemini) {
+    return null;
+  }
+
   const unconfigured = providers.filter((p) => p.status === 'unconfigured');
   const errors = providers.filter((p) => p.status === 'error');
 

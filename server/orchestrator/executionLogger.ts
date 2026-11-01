@@ -45,6 +45,7 @@ class ExecutionLogger {
       latencySum: number;
     }> = {
       gemini: { totalRequests: 0, successfulRequests: 0, failedRequests: 0, avgLatencyMs: 0, totalPromptTokens: 0, totalCompletionTokens: 0, latencySum: 0 },
+      'gemini-lite': { totalRequests: 0, successfulRequests: 0, failedRequests: 0, avgLatencyMs: 0, totalPromptTokens: 0, totalCompletionTokens: 0, latencySum: 0 },
       groq: { totalRequests: 0, successfulRequests: 0, failedRequests: 0, avgLatencyMs: 0, totalPromptTokens: 0, totalCompletionTokens: 0, latencySum: 0 },
     };
 
@@ -69,7 +70,7 @@ class ExecutionLogger {
     }
 
     // Compute averages
-    for (const p of (['gemini', 'groq'] as LLMProviderId[])) {
+    for (const p of (['gemini', 'gemini-lite', 'groq'] as LLMProviderId[])) {
       stats[p].avgLatencyMs = stats[p].successfulRequests > 0
         ? Math.round(stats[p].latencySum / stats[p].successfulRequests)
         : 0;
@@ -77,6 +78,7 @@ class ExecutionLogger {
 
     return {
       gemini: { ...stats.gemini },
+      'gemini-lite': { ...stats['gemini-lite'] },
       groq: { ...stats.groq },
     };
   }

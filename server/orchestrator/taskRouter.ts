@@ -1,5 +1,5 @@
 import { LLMProvider, LLMProviderId, LLMRequestOptions, LLMResponse, ProviderConfig } from '../types.js';
-import { geminiAdapter } from './geminiAdapter.js';
+import { geminiAdapter, geminiLiteAdapter } from './geminiAdapter.js';
 import { groqAdapter } from './groqAdapter.js';
 import { CONFIG } from '../config.js';
 
@@ -8,6 +8,7 @@ export type AcademicTaskType = 'tutor' | 'summary' | 'flashcards' | 'quiz' | 're
 export class TaskRouter {
   private providers: Record<LLMProviderId, LLMProvider> = {
     gemini: geminiAdapter,
+    'gemini-lite': geminiLiteAdapter,
     groq: groqAdapter,
   };
 
@@ -24,13 +25,13 @@ export class TaskRouter {
       case 'tutor':
       case 'evaluation':
       case 'review':
-        return 'gemini'; // Provider A: Gemini
+        return 'gemini'; // Gemini 3.8 Flash
       case 'summary':
       case 'flashcards':
       case 'quiz':
-        return 'groq'; // Provider B: Groq Llama
+        return 'gemini'; // Gemini 3.8 Flash (Structured Academic Synthesis)
       case 'planner':
-        return 'gemini'; // Provider A with mathematical validator
+        return 'gemini'; // Gemini 3.8 Flash
       case 'comparison':
         return 'gemini';
       default:
@@ -39,13 +40,13 @@ export class TaskRouter {
   }
 
   public async getDiagnostics(userKeys?: { gemini?: string; groq?: string }): Promise<ProviderConfig[]> {
-    const providerIds: LLMProviderId[] = ['gemini', 'groq'];
+    const providerIds: LLMProviderId[] = ['gemini', 'gemini-lite', 'groq'];
     const results: ProviderConfig[] = [];
 
     for (const id of providerIds) {
       const p = this.providers[id];
-      const customKey = userKeys?.[id];
-      const effectiveKey = customKey || (id === 'gemini' ? CONFIG.gemini.apiKey : CONFIG.groq.apiKey);
+      const customKey = id === 'groq' ? userKeys?.groq : userKeys?.gemini;
+      const effectiveKey = customKey || (id === 'groq' ? CONFIG.groq.apiKey : CONFIG.gemini.apiKey);
       const isConfigured = p.isConfigured(effectiveKey);
 
       if (!isConfigured) {
@@ -104,8 +105,8 @@ export class TaskRouter {
       }
 
       // Determine fallback order: check configured providers
-      const candidates: LLMProviderId[] = (['gemini', 'groq'] as LLMProviderId[]).filter(
-        (id) => id !== preferredId && this.providers[id].isConfigured()
+      const candidates: LLMProviderId[] = (['gemini', 'gemini-lite', 'groq'] as LLMProviderId[]).filter(
+        (id) => id !== preferredId && this.providers[id].isConfigured(id === 'groq' ? undefined : (options?.apiKeyOverride || CONFIG.gemini.apiKey))
       );
 
       if (candidates.length === 0) {

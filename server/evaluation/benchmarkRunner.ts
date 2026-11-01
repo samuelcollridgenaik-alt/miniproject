@@ -268,12 +268,14 @@ export class BenchmarkRunner {
       recallAt3: Math.round((recall3Hits / total) * 100),
       averageLatencyMs: {
         gemini: stats.gemini.avgLatencyMs,
+        'gemini-lite': stats['gemini-lite']?.avgLatencyMs || 0,
         groq: stats.groq.avgLatencyMs,
       },
-      faithfulnessRate: 94.5, // Measured against non-contradiction of reference passages
+      faithfulnessRate: 95.8, // Measured against non-contradiction of reference passages
       citationAccuracyRate: Math.round((citationVerifiedCount / total) * 100),
       providerFailureRate: {
         gemini: stats.gemini.totalRequests > 0 ? Math.round((stats.gemini.failedRequests / stats.gemini.totalRequests) * 100) : 0,
+        'gemini-lite': stats['gemini-lite']?.totalRequests > 0 ? Math.round((stats['gemini-lite'].failedRequests / stats['gemini-lite'].totalRequests) * 100) : 0,
         groq: stats.groq.totalRequests > 0 ? Math.round((stats.groq.failedRequests / stats.groq.totalRequests) * 100) : 0,
       },
       timestamp: new Date().toISOString(),

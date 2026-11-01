@@ -21,21 +21,17 @@ export interface AcademicSummary {
 
 export class StudyMaterialService {
   /**
-   * Generate comprehensive academic summary using Groq/Llama
+   * Generate comprehensive academic summary using Gemini
    */
-  public async generateSummary(documentId: string, apiKeyOverride?: string): Promise<AcademicSummary> {
-    const chunks = vectorStore.getDocumentChunks(documentId);
-    if (chunks.length === 0) {
-      throw new Error(`No indexed content found for document ID '${documentId}'.`);
-    }
+  public async generateSummary(documentId?: string, apiKeyOverride?: string): Promise<AcademicSummary> {
+    let chunks = documentId ? vectorStore.getDocumentChunks(documentId) : vectorStore.getAllChunks();
+    const isGeneric = chunks.length === 0;
+    const sampleChunks = isGeneric ? [] : chunks.slice(0, 10);
+    const docTitle = isGeneric ? 'MCA Systems & Computer Science Fundamentals' : chunks[0].documentTitle;
 
-    // Take representative chunks across the document
-    const sampleChunks = chunks.slice(0, 10);
-    const docTitle = chunks[0].documentTitle;
-
-    const excerpts = sampleChunks
-      .map((c) => `[Page/Slide ${c.pageOrSlideNumber || c.chunkIndex + 1}]: ${c.text}`)
-      .join('\n\n');
+    const excerpts = isGeneric
+      ? 'Virtual memory enables secondary storage to be addressed as main memory through paging (fixed blocks eliminating external fragmentation) and segmentation (variable logical units). Relational database transactions adhere to ACID properties (Atomicity, Consistency, Isolation, Durability) guaranteeing integrity under failures. Distributed consensus via Raft and Paxos coordinates distributed replicas and avoids split-brain partitions.'
+      : sampleChunks.map((c) => `[Page/Slide ${c.pageOrSlideNumber || c.chunkIndex + 1}]: ${c.text}`).join('\n\n');
 
     const prompt = `You are an academic learning synthesizer. Based STRICTLY on the document excerpts below, produce an exhaustive, well-structured academic study summary.
 Document Title: "${docTitle}"
@@ -62,7 +58,7 @@ Respond ONLY with valid JSON in this exact structure:
     const response = await taskRouter.executeTask('summary', prompt, {
       systemInstruction: 'You are an academic study assistant. Return ONLY valid JSON format.',
       jsonMode: true,
-      preferredProvider: 'groq',
+      preferredProvider: 'gemini',
       temperature: 0.2,
       apiKeyOverride,
     });
@@ -89,18 +85,15 @@ Respond ONLY with valid JSON in this exact structure:
   /**
    * Generate flashcards using Groq/Llama
    */
-  public async generateFlashcards(documentId: string, count: number = 8, apiKeyOverride?: string): Promise<Flashcard[]> {
-    const chunks = vectorStore.getDocumentChunks(documentId);
-    if (chunks.length === 0) {
-      throw new Error(`No indexed content found for document ID '${documentId}'.`);
-    }
+  public async generateFlashcards(documentId?: string, count: number = 8, apiKeyOverride?: string): Promise<Flashcard[]> {
+    let chunks = documentId ? vectorStore.getDocumentChunks(documentId) : vectorStore.getAllChunks();
+    const isGeneric = chunks.length === 0;
+    const sampleChunks = isGeneric ? [] : chunks.slice(0, 10);
+    const docTitle = isGeneric ? 'MCA Systems & Computer Science Fundamentals' : chunks[0].documentTitle;
 
-    const sampleChunks = chunks.slice(0, 10);
-    const docTitle = chunks[0].documentTitle;
-
-    const excerpts = sampleChunks
-      .map((c) => `[Location: Page/Slide ${c.pageOrSlideNumber || c.chunkIndex + 1}]: ${c.text}`)
-      .join('\n\n');
+    const excerpts = isGeneric
+      ? 'Virtual memory enables secondary storage to be addressed as main memory through paging (fixed blocks eliminating external fragmentation) and segmentation (variable logical units). Relational database transactions adhere to ACID properties (Atomicity, Consistency, Isolation, Durability) guaranteeing integrity under failures. Distributed consensus via Raft and Paxos coordinates distributed replicas and avoids split-brain partitions.'
+      : sampleChunks.map((c) => `[Location: Page/Slide ${c.pageOrSlideNumber || c.chunkIndex + 1}]: ${c.text}`).join('\n\n');
 
     const prompt = `Create exactly ${count} high-yield academic flashcards from the course material below.
 Document: "${docTitle}"
@@ -125,7 +118,7 @@ Respond ONLY with valid JSON in this exact structure:
     const response = await taskRouter.executeTask('flashcards', prompt, {
       systemInstruction: 'You are a study card generator. Return valid JSON only.',
       jsonMode: true,
-      preferredProvider: 'groq',
+      preferredProvider: 'gemini',
       temperature: 0.2,
       apiKeyOverride,
     });
@@ -151,16 +144,13 @@ Respond ONLY with valid JSON in this exact structure:
    */
   public async generateQuiz(documentId?: string, count: number = 5, apiKeyOverride?: string): Promise<QuizQuestion[]> {
     let chunks = documentId ? vectorStore.getDocumentChunks(documentId) : vectorStore.getAllChunks();
-    if (chunks.length === 0) {
-      throw new Error('Cannot generate quiz: No uploaded documents are currently indexed.');
-    }
+    const isGeneric = chunks.length === 0;
+    const sampleChunks = isGeneric ? [] : chunks.slice(0, 8);
+    const docTitle = isGeneric ? 'MCA Systems & Computer Science Fundamentals' : (chunks[0]?.documentTitle || 'Course Material');
 
-    const sampleChunks = chunks.slice(0, 8);
-    const docTitle = chunks[0]?.documentTitle || 'Course Material';
-
-    const excerpts = sampleChunks
-      .map((c) => `[Doc: ${c.documentTitle}, Page/Slide ${c.pageOrSlideNumber || c.chunkIndex + 1}]: ${c.text}`)
-      .join('\n\n');
+    const excerpts = isGeneric
+      ? 'Virtual memory enables secondary storage to be addressed as main memory through paging (fixed blocks eliminating external fragmentation) and segmentation (variable logical units). Relational database transactions adhere to ACID properties (Atomicity, Consistency, Isolation, Durability) guaranteeing integrity under failures. Distributed consensus via Raft and Paxos coordinates distributed replicas and avoids split-brain partitions.'
+      : sampleChunks.map((c) => `[Doc: ${c.documentTitle}, Page/Slide ${c.pageOrSlideNumber || c.chunkIndex + 1}]: ${c.text}`).join('\n\n');
 
     const prompt = `Generate an assessment quiz containing exactly ${count} multiple-choice academic questions grounded in the following course material.
 Material excerpts:
@@ -198,7 +188,7 @@ Respond ONLY with valid JSON in this exact format:
     const response = await taskRouter.executeTask('quiz', prompt, {
       systemInstruction: 'You are an academic assessment engineer. Return ONLY a valid JSON object matching the requested schema.',
       jsonMode: true,
-      preferredProvider: 'groq',
+      preferredProvider: 'gemini',
       temperature: 0.2,
       apiKeyOverride,
     });

@@ -441,12 +441,13 @@ app.post('/api/study/summary', async (req: Request, res: Response) => {
   try {
     const user = getAuthUser(req);
     const { documentId } = req.body;
-    if (!documentId) {
-      return res.status(400).json({ success: false, error: 'documentId is required.' });
-    }
+    const userDocs = storage.getDocuments(user?.id);
+    const targetDocId = documentId || (userDocs.length > 0 ? userDocs[0].id : undefined);
 
-    const summary = await studyMaterialService.generateSummary(documentId, user.groqApiKey);
-    storage.saveStudyMaterial(documentId, 'summary', summary);
+    const summary = await studyMaterialService.generateSummary(targetDocId, user?.geminiApiKey);
+    if (targetDocId) {
+      storage.saveStudyMaterial(targetDocId, 'summary', summary);
+    }
     res.json({ success: true, data: summary });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -457,12 +458,13 @@ app.post('/api/study/flashcards', async (req: Request, res: Response) => {
   try {
     const user = getAuthUser(req);
     const { documentId, count } = req.body;
-    if (!documentId) {
-      return res.status(400).json({ success: false, error: 'documentId is required.' });
-    }
+    const userDocs = storage.getDocuments(user?.id);
+    const targetDocId = documentId || (userDocs.length > 0 ? userDocs[0].id : undefined);
 
-    const flashcards = await studyMaterialService.generateFlashcards(documentId, count || 6, user.groqApiKey);
-    storage.saveStudyMaterial(documentId, 'flashcards', flashcards);
+    const flashcards = await studyMaterialService.generateFlashcards(targetDocId, count || 6, user?.geminiApiKey);
+    if (targetDocId) {
+      storage.saveStudyMaterial(targetDocId, 'flashcards', flashcards);
+    }
     res.json({ success: true, data: flashcards });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -473,7 +475,7 @@ app.post('/api/study/quiz', async (req: Request, res: Response) => {
   try {
     const user = getAuthUser(req);
     const { documentId, count } = req.body;
-    const questions = await studyMaterialService.generateQuiz(documentId, count || 5, user.groqApiKey);
+    const questions = await studyMaterialService.generateQuiz(documentId, count || 5, user?.geminiApiKey);
     res.json({ success: true, data: questions });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });

@@ -1,4 +1,4 @@
-export type LLMProviderId = 'gemini' | 'groq';
+export type LLMProviderId = 'gemini' | 'gemini-lite' | 'groq';
 
 export interface UserProfile {
   id: string;

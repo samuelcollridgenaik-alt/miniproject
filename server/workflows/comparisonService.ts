@@ -2,6 +2,7 @@ import { ModelComparisonResult, LLMProviderId } from '../types.js';
 import { vectorStore } from '../rag/vectorStore.js';
 import { taskRouter } from '../orchestrator/taskRouter.js';
 import { executionLogger } from '../orchestrator/executionLogger.js';
+import { CONFIG } from '../config.js';
 
 export class ComparisonService {
   /**
@@ -22,11 +23,14 @@ export class ComparisonService {
     const systemInstruction = 'You are an academic intelligence assistant. Answer the user question accurately based on the provided reference context. Be clear, concise, and cite concepts where applicable.';
     const prompt = `QUESTION: ${question}\n\nCONTEXT:\n${contextSnippet}\n\nAnswer:`;
 
-    const providerList: LLMProviderId[] = ['gemini', 'groq'];
+    const providerList: LLMProviderId[] = ['gemini', 'gemini-lite'];
+    if (userKeys?.groq || CONFIG.groq.apiKey) {
+      providerList.push('groq');
+    }
 
     const promises = providerList.map(async (providerId) => {
       const p = taskRouter.getProvider(providerId);
-      const customKey = userKeys?.[providerId];
+      const customKey = providerId === 'groq' ? userKeys?.groq : userKeys?.gemini;
       const isConfigured = p.isConfigured(customKey);
 
       if (!isConfigured) {

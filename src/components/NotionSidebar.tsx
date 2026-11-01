@@ -60,7 +60,7 @@ export const NotionSidebar: React.FC<NotionSidebarProps> = ({
       items: [
         { id: 'tutor' as NavTabId, label: 'Academic AI Tutor', emoji: '🧠', tag: 'RAG' },
         { id: 'documents' as NavTabId, label: 'Course Notes & Vault', emoji: '📚', count: docsCount },
-        { id: 'study' as NavTabId, label: 'Active Recall & Cards', emoji: '⚡', tag: 'Groq' },
+        { id: 'study' as NavTabId, label: 'Active Recall & Cards', emoji: '⚡', tag: 'Fast' },
         { id: 'quiz' as NavTabId, label: 'Adaptive Quizzer', emoji: '🎯' },
       ],
     },

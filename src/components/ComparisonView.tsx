@@ -45,18 +45,18 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({ documents }) => 
   return (
     <div className="space-y-6">
       {/* Top Config Card */}
-      <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm">
+      <div className="bg-white dark:bg-[#202020] rounded-2xl border border-slate-200/90 dark:border-zinc-800 p-6 shadow-xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-xl bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-bold">
               <GitCompare className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">
-                Multi-Model Academic Laboratory (Gemini vs Groq Llama)
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                Multi-Model AI Comparison Arena
               </h2>
-              <p className="text-xs text-slate-500">
-                Submits identical prompt and retrieved context simultaneously to compare reasoning, style, latency, and tokens.
+              <p className="text-xs text-slate-500 dark:text-zinc-400">
+                Submits identical academic prompts simultaneously across Google Gemini models (Deep Reasoning vs Instant Speed) to compare latency, tokens, and explanations.
               </p>
             </div>
           </div>
@@ -65,7 +65,7 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({ documents }) => 
             <select
               value={selectedDocId}
               onChange={(e) => setSelectedDocId(e.target.value)}
-              className="bg-slate-50 border border-slate-300 text-xs text-slate-800 rounded-xl px-3.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-medium"
+              className="bg-slate-50 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 text-xs text-slate-800 dark:text-zinc-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 font-medium"
             >
               <option value="">All Uploaded Documents</option>
               {documents.map((d) => (
@@ -89,22 +89,22 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({ documents }) => 
               type="text"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Enter academic question to benchmark across Gemini and Groq Llama..."
-              className="w-full bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 rounded-2xl pl-4 pr-32 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition shadow-inner"
+              placeholder="Enter academic question to benchmark across model architectures..."
+              className="w-full bg-slate-50 dark:bg-zinc-800/80 hover:bg-white dark:hover:bg-zinc-800 focus:bg-white dark:focus:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl pl-4 pr-32 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition shadow-inner"
             />
             <button
               type="submit"
               disabled={loading || !question.trim()}
-              className="absolute right-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-medium text-xs rounded-xl flex items-center gap-1.5 transition shadow-xs"
+              className="absolute right-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-zinc-700 text-white font-medium text-xs rounded-lg flex items-center gap-1.5 transition shadow-xs"
             >
               {loading ? (
                 <>
                   <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Evaluating...</span>
+                  <span>Comparing...</span>
                 </>
               ) : (
                 <>
-                  <span>Benchmark</span>
+                  <span>Compare Models</span>
                   <Send className="w-3.5 h-3.5" />
                 </>
               )}
@@ -113,17 +113,17 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({ documents }) => 
         </div>
 
         {error && (
-          <div className="mt-3 p-3 bg-red-50 border border-red-200 text-xs text-red-700 rounded-2xl">
+          <div className="mt-3 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 text-xs text-red-700 dark:text-red-300 rounded-xl">
             {error}
           </div>
         )}
       </div>
 
       {loading && (
-        <div className="p-12 text-center bg-white rounded-3xl border border-slate-200/90 shadow-sm">
-          <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm font-semibold text-slate-800">Dispatching concurrent queries to Gemini and Groq...</p>
-          <p className="text-xs text-slate-500 mt-0.5">Recording execution latency and response quality...</p>
+        <div className="p-12 text-center bg-white dark:bg-[#202020] rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs">
+          <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm font-semibold text-slate-800 dark:text-white">Dispatching concurrent requests to Gemini models...</p>
+          <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">Recording execution latency and synthesis differences...</p>
         </div>
       )}
 
@@ -141,48 +141,53 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({ documents }) => 
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {comparison.results.map((res) => {
-              const isGemini = res.provider === 'gemini';
+              const providerTitle = res.provider === 'gemini'
+                ? 'Gemini 3.8 Flash (Reasoning Tier)'
+                : res.provider === 'gemini-lite'
+                ? 'Gemini 3.1 Flash-Lite (Speed Tier)'
+                : 'Groq Llama 3.3 Versatile';
+
               return (
                 <div
                   key={res.provider}
-                  className="bg-white rounded-3xl border border-slate-200/90 flex flex-col justify-between shadow-sm overflow-hidden"
+                  className="bg-white dark:bg-[#202020] rounded-2xl border border-slate-200/90 dark:border-zinc-800 flex flex-col justify-between shadow-xs overflow-hidden"
                 >
                   {/* Header */}
-                  <div className="p-5 border-b border-slate-100 bg-slate-50/60">
+                  <div className="p-4 border-b border-slate-100 dark:border-zinc-800 bg-slate-50/60 dark:bg-zinc-800/40">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                        {isGemini ? 'Google Gemini 3.8 Flash' : 'Groq Llama 3.3 Versatile'}
+                      <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                        {providerTitle}
                       </span>
                       {res.success ? (
-                        <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full">
+                        <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
                           <CheckCircle2 className="w-3.5 h-3.5" /> Online
                         </span>
                       ) : (
-                        <span className="flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full">
-                          <AlertCircle className="w-3.5 h-3.5" /> Notice
+                        <span className="flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                          <AlertCircle className="w-3.5 h-3.5" /> Unconfigured
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] font-mono text-blue-600">
+                    <div className="text-[11px] font-mono text-indigo-600 dark:text-indigo-400">
                       Model: {res.model}
                     </div>
 
-                    <div className="mt-2 flex items-center gap-3 text-[11px] text-slate-500">
+                    <div className="mt-2 flex items-center gap-3 text-[11px] text-slate-500 dark:text-zinc-400">
                       <span className="flex items-center gap-1">
                         <Clock className="w-3.5 h-3.5 text-slate-400" />
-                        Latency: <strong className="text-slate-900">{res.latencyMs}ms</strong>
+                        Latency: <strong className="text-slate-900 dark:text-white">{res.latencyMs}ms</strong>
                       </span>
                       {res.usage?.totalTokens && (
                         <span className="flex items-center gap-1">
                           <Zap className="w-3.5 h-3.5 text-amber-500" />
-                          Tokens: <strong className="text-slate-900">{res.usage.totalTokens}</strong>
+                          Tokens: <strong className="text-slate-900 dark:text-white">{res.usage.totalTokens}</strong>
                         </span>
                       )}
                     </div>
                   </div>
 
                   {/* Body */}
-                  <div className="p-6 flex-1 text-xs text-slate-800 whitespace-pre-wrap leading-relaxed max-h-[460px] overflow-y-auto font-sans">
+                  <div className="p-5 flex-1 text-xs text-slate-800 dark:text-zinc-200 whitespace-pre-wrap leading-relaxed max-h-[460px] overflow-y-auto font-sans">
                     {res.response}
                   </div>
                 </div>
