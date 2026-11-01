@@ -33,7 +33,10 @@ app.use((req: Request, res: Response, next) => {
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
-  if (req.url && !req.url.startsWith('/api') && !req.url.startsWith('/assets') && !req.url.startsWith('/favicon')) {
+  // When Vercel rewrites /api/(.*) to /api, req.originalUrl retains the incoming request path
+  if (req.originalUrl && req.originalUrl.startsWith('/api') && (!req.url || req.url === '/' || req.url === '/api' || req.url === '/api/')) {
+    req.url = req.originalUrl;
+  } else if (req.url && !req.url.startsWith('/api') && !req.url.startsWith('/assets') && !req.url.startsWith('/favicon')) {
     req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
   }
   next();
