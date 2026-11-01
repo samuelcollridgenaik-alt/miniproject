@@ -831,14 +831,13 @@ var TaskRouter = class {
   }
   async getDiagnostics(userKeys) {
     const providerIds = ["gemini", "gemini-lite", "groq", "cognify-curriculum"];
-    const results = [];
-    for (const id of providerIds) {
+    const promises = providerIds.map(async (id) => {
       const p = this.providers[id];
       const customKey = id === "groq" ? userKeys?.groq : userKeys?.gemini;
       const effectiveKey = customKey || (id === "groq" ? CONFIG.groq.apiKey : CONFIG.gemini.apiKey);
       const isConfigured = p.isConfigured(effectiveKey);
       if (!isConfigured) {
-        results.push({
+        return {
           id,
           name: p.name,
           family: p.family,
@@ -848,24 +847,41 @@ var TaskRouter = class {
           apiKeyPresent: false,
           isCustomKey: !!customKey,
           lastError: customKey ? "Custom key provided is invalid" : "API key not configured in environment"
-        });
-        continue;
+        };
       }
-      const pingRes = await p.ping(effectiveKey);
-      results.push({
-        id,
-        name: p.name,
-        family: p.family,
-        defaultModel: p.defaultModel,
-        isConfigured: true,
-        status: pingRes.ok ? "online" : "error",
-        lastPingMs: pingRes.latencyMs,
-        lastError: pingRes.ok ? void 0 : pingRes.message,
-        apiKeyPresent: true,
-        isCustomKey: !!customKey
-      });
-    }
-    return results;
+      try {
+        const pingPromise = p.ping(effectiveKey);
+        const timeoutPromise = new Promise(
+          (resolve) => setTimeout(() => resolve({ ok: false, latencyMs: 3500, message: "Ping timed out after 3500ms" }), 3500)
+        );
+        const pingRes = await Promise.race([pingPromise, timeoutPromise]);
+        return {
+          id,
+          name: p.name,
+          family: p.family,
+          defaultModel: p.defaultModel,
+          isConfigured: true,
+          status: pingRes.ok ? "online" : "error",
+          lastPingMs: pingRes.latencyMs,
+          lastError: pingRes.ok ? void 0 : pingRes.message,
+          apiKeyPresent: true,
+          isCustomKey: !!customKey
+        };
+      } catch (err) {
+        return {
+          id,
+          name: p.name,
+          family: p.family,
+          defaultModel: p.defaultModel,
+          isConfigured: true,
+          status: "error",
+          lastError: err.message,
+          apiKeyPresent: true,
+          isCustomKey: !!customKey
+        };
+      }
+    });
+    return await Promise.all(promises);
   }
   /**
    * Execute with retry and fallback handling

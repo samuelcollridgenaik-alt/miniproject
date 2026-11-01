@@ -43,47 +43,64 @@ export class TaskRouter {
 
   public async getDiagnostics(userKeys?: { gemini?: string; groq?: string }): Promise<ProviderConfig[]> {
     const providerIds: LLMProviderId[] = ['gemini', 'gemini-lite', 'groq', 'cognify-curriculum'];
-    const results: ProviderConfig[] = [];
 
-    for (const id of providerIds) {
+    const promises = providerIds.map(async (id) => {
       const p = this.providers[id];
       const customKey = id === 'groq' ? userKeys?.groq : userKeys?.gemini;
       const effectiveKey = customKey || (id === 'groq' ? CONFIG.groq.apiKey : CONFIG.gemini.apiKey);
       const isConfigured = p.isConfigured(effectiveKey);
 
       if (!isConfigured) {
-        results.push({
+        return {
           id,
           name: p.name,
           family: p.family,
           defaultModel: p.defaultModel,
           isConfigured: false,
-          status: 'unconfigured',
+          status: 'unconfigured' as const,
           apiKeyPresent: false,
           isCustomKey: !!customKey,
           lastError: customKey ? 'Custom key provided is invalid' : 'API key not configured in environment',
-        });
-        continue;
+        };
       }
 
-      // Ping to verify connectivity with effective key
-      const pingRes = await p.ping(effectiveKey);
-      results.push({
-        id,
-        name: p.name,
-        family: p.family,
-        defaultModel: p.defaultModel,
-        isConfigured: true,
-        status: pingRes.ok ? 'online' : 'error',
-        lastPingMs: pingRes.latencyMs,
-        lastError: pingRes.ok ? undefined : pingRes.message,
-        apiKeyPresent: true,
-        isCustomKey: !!customKey,
-      });
-    }
+      try {
+        const pingPromise = p.ping(effectiveKey);
+        const timeoutPromise = new Promise<{ ok: boolean; latencyMs: number; message: string }>((resolve) =>
+          setTimeout(() => resolve({ ok: false, latencyMs: 3500, message: 'Ping timed out after 3500ms' }), 3500)
+        );
+        const pingRes = await Promise.race([pingPromise, timeoutPromise]);
 
-    return results;
+        return {
+          id,
+          name: p.name,
+          family: p.family,
+          defaultModel: p.defaultModel,
+          isConfigured: true,
+          status: (pingRes.ok ? 'online' : 'error') as 'online' | 'error',
+          lastPingMs: pingRes.latencyMs,
+          lastError: pingRes.ok ? undefined : pingRes.message,
+          apiKeyPresent: true,
+          isCustomKey: !!customKey,
+        };
+      } catch (err: any) {
+        return {
+          id,
+          name: p.name,
+          family: p.family,
+          defaultModel: p.defaultModel,
+          isConfigured: true,
+          status: 'error' as const,
+          lastError: err.message,
+          apiKeyPresent: true,
+          isCustomKey: !!customKey,
+        };
+      }
+    });
+
+    return await Promise.all(promises);
   }
+
 
   /**
    * Execute with retry and fallback handling
