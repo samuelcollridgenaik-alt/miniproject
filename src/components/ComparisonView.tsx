@@ -21,10 +21,14 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({ documents }) => 
     setLoading(true);
     setError(null);
 
+    const customGeminiKey = localStorage.getItem('cognify_gemini_key') || '';
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (customGeminiKey) headers['x-gemini-key'] = customGeminiKey;
+
     try {
       const res = await fetch('/api/models/compare', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           question,
           documentIdFilter: selectedDocId || undefined,
@@ -45,7 +49,7 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({ documents }) => 
   return (
     <div className="space-y-6">
       {/* Top Config Card */}
-      <div className="bg-white dark:bg-[#202020] rounded-2xl border border-slate-200/90 dark:border-zinc-800 p-6 shadow-xs">
+      <div className="bg-white dark:bg-[#1e1f20] rounded-2xl border border-slate-200/90 dark:border-zinc-800 p-6 shadow-xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-bold">
@@ -90,7 +94,7 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({ documents }) => 
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               placeholder="Enter academic question to benchmark across model architectures..."
-              className="w-full bg-slate-50 dark:bg-zinc-800/80 hover:bg-white dark:hover:bg-zinc-800 focus:bg-white dark:focus:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl pl-4 pr-32 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 transition shadow-inner"
+              className="w-full bg-slate-50 dark:bg-zinc-900 hover:bg-white dark:hover:bg-zinc-800 focus:bg-white dark:focus:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-xl pl-4 pr-32 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition shadow-inner"
             />
             <button
               type="submit"
@@ -120,7 +124,7 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({ documents }) => 
       </div>
 
       {loading && (
-        <div className="p-12 text-center bg-white dark:bg-[#202020] rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs">
+        <div className="p-12 text-center bg-white dark:bg-[#1e1f20] rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs">
           <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm font-semibold text-slate-800 dark:text-white">Dispatching concurrent requests to Gemini models...</p>
           <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">Recording execution latency and synthesis differences...</p>
@@ -130,14 +134,15 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({ documents }) => 
       {/* Comparison Columns */}
       {comparison && (
         <div className="space-y-4">
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-xs text-slate-600 flex items-center justify-between">
+          <div className="bg-slate-50 dark:bg-zinc-850 border border-slate-200 dark:border-zinc-800 rounded-2xl p-3.5 text-xs text-slate-600 dark:text-zinc-400 flex items-center justify-between">
             <span>
-              Retrieved Context: <strong className="text-slate-900">{comparison.contextSummary}</strong>
+              Retrieved Context: <strong className="text-slate-900 dark:text-white">{comparison.contextSummary}</strong>
             </span>
-            <span className="font-mono text-[11px] text-slate-400">
+            <span className="font-mono text-[11px] text-slate-400 dark:text-zinc-500">
               Request ID: {comparison.requestId}
             </span>
           </div>
+
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {comparison.results.map((res) => {

@@ -1,11 +1,23 @@
 import React, { useState } from 'react';
 import { DocumentMeta, GroundedAnswerData } from '../types.js';
-import { Send, BookOpen, AlertCircle, CheckCircle2, FileText, Sparkles, HelpCircle, ArrowRight } from 'lucide-react';
+import {
+  Send,
+  Sparkles,
+  BookOpen,
+  FileText,
+  AlertCircle,
+  CheckCircle2,
+  HelpCircle,
+  Copy,
+  Check,
+  GraduationCap,
+  Smile,
+} from 'lucide-react';
 
 interface TutorViewProps {
   documents: DocumentMeta[];
   onSeedSample: () => void;
-  onNavigateToDocuments?: () => void;
+  onNavigateToDocuments: () => void;
 }
 
 export const TutorView: React.FC<TutorViewProps> = ({
@@ -15,17 +27,41 @@ export const TutorView: React.FC<TutorViewProps> = ({
 }) => {
   const [question, setQuestion] = useState('');
   const [selectedDocId, setSelectedDocId] = useState<string>('');
-  const [tutorMode, setTutorMode] = useState<'kid' | 'scholar'>('scholar');
+  const [tutorMode, setTutorMode] = useState<'kid' | 'scholar'>('kid');
   const [loading, setLoading] = useState(false);
   const [answer, setAnswer] = useState<GroundedAnswerData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const sampleQuestions = [
-    { title: 'Paging vs Segmentation', prompt: 'What is the difference between paging and segmentation in memory management?', icon: '🍕' },
-    { title: 'ACID Properties', prompt: 'Explain the ACID properties of database transactions with simple examples.', icon: '🏦' },
-    { title: 'Raft Consensus', prompt: 'How does the Raft consensus algorithm handle leader election like a classroom vote?', icon: '🤝' },
-    { title: 'Cache & Memory', prompt: 'How does CPU cache memory speed up programs like a kitchen pantry?', icon: '⚡' },
+    {
+      title: 'Paging & Memory',
+      icon: '📖',
+      prompt: 'Explain paging vs segmentation and how it solves fragmentation.',
+    },
+    {
+      title: 'ACID Guarantees',
+      icon: '🔐',
+      prompt: 'Why are ACID properties essential for transactional databases?',
+    },
+    {
+      title: 'Raft Consensus',
+      icon: '⛵',
+      prompt: 'How does the Raft leader election algorithm prevent split votes?',
+    },
+    {
+      title: 'Cache Hierarchies',
+      icon: '⚡',
+      prompt: 'How do L1, L2, and L3 CPU cache hierarchies minimize memory stall cycles?',
+    },
   ];
+
+  const handleCopy = () => {
+    if (!answer?.answer) return;
+    navigator.clipboard.writeText(answer.answer);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleAsk = async (queryToAsk?: string) => {
     const rawQ = queryToAsk || question;
@@ -38,14 +74,21 @@ export const TutorView: React.FC<TutorViewProps> = ({
       ? `${rawQ}\n\n[Persona: Explain this simply and cheerfully with everyday analogies that even a 10-year-old or beginner student can instantly understand! Break down tough terms into friendly concepts.]`
       : rawQ;
 
+    const customGeminiKey = localStorage.getItem('cognify_gemini_key') || '';
+    const preferredProvider = localStorage.getItem('cognify_preferred_provider') || 'gemini';
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (customGeminiKey) headers['x-gemini-key'] = customGeminiKey;
+    if (preferredProvider) headers['x-preferred-provider'] = preferredProvider;
+
     try {
       const res = await fetch('/api/tutor/ask', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           question: formattedQuestion,
           documentIdFilter: selectedDocId || undefined,
-          preferredProvider: 'gemini',
+          preferredProvider,
         }),
       });
 
@@ -64,8 +107,8 @@ export const TutorView: React.FC<TutorViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Cognify Tutor Card */}
-      <div className="bg-white dark:bg-[#202020] rounded-2xl border border-slate-200/90 dark:border-zinc-800 p-6 shadow-xs transition-colors">
+      {/* Cognify Tutor Input Card */}
+      <div className="bg-white dark:bg-[#1e1f20] rounded-2xl border border-slate-200/90 dark:border-zinc-800 p-6 shadow-xs transition-colors">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
@@ -87,24 +130,26 @@ export const TutorView: React.FC<TutorViewProps> = ({
               <button
                 type="button"
                 onClick={() => setTutorMode('kid')}
-                className={`px-3 py-1 font-medium rounded-md transition ${
+                className={`px-3 py-1 font-medium rounded-md transition flex items-center gap-1.5 ${
                   tutorMode === 'kid'
-                    ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-300 shadow-xs'
+                    ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-300 shadow-2xs'
                     : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900'
                 }`}
               >
-                🧸 Simple & Fun
+                <span>🧸</span>
+                <span>Simple & Fun</span>
               </button>
               <button
                 type="button"
                 onClick={() => setTutorMode('scholar')}
-                className={`px-3 py-1 font-medium rounded-md transition ${
+                className={`px-3 py-1 font-medium rounded-md transition flex items-center gap-1.5 ${
                   tutorMode === 'scholar'
-                    ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-300 shadow-xs'
+                    ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-300 shadow-2xs'
                     : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900'
                 }`}
               >
-                🎓 Academic Pro
+                <span>🎓</span>
+                <span>Academic Pro</span>
               </button>
             </div>
 
@@ -153,10 +198,10 @@ export const TutorView: React.FC<TutorViewProps> = ({
             onChange={(e) => setQuestion(e.target.value)}
             placeholder={
               tutorMode === 'kid'
-                ? "Ask anything! (e.g. 'Explain how computer memory works like a pizza box' or 'Why do transactions need ACID?')..."
+                ? "Ask anything! (e.g. 'Explain how computer memory works like a kitchen' or 'Why do transactions need ACID?')..."
                 : "Ask an academic question (e.g. 'Explain ACID properties' or 'Contrast paging vs segmentation')..."
             }
-            className="w-full bg-slate-50 dark:bg-zinc-800/80 hover:bg-white dark:hover:bg-zinc-800 focus:bg-white dark:focus:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl pl-4 pr-32 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition shadow-inner"
+            className="w-full bg-slate-50 dark:bg-zinc-900 hover:bg-white dark:hover:bg-zinc-800 focus:bg-white dark:focus:bg-zinc-900 border border-slate-300 dark:border-zinc-700 rounded-xl pl-4 pr-32 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition shadow-inner"
           />
           <button
             type="submit"
@@ -190,7 +235,7 @@ export const TutorView: React.FC<TutorViewProps> = ({
                 setQuestion(sq.prompt);
                 handleAsk(sq.prompt);
               }}
-              className="text-[11px] bg-slate-100 dark:bg-zinc-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-700 dark:hover:text-indigo-300 text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700 rounded-md px-2.5 py-1 transition flex items-center gap-1"
+              className="text-[11px] bg-slate-100 dark:bg-zinc-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-700 dark:hover:text-indigo-300 text-slate-700 dark:text-zinc-300 border border-slate-200/80 dark:border-zinc-700 rounded-lg px-2.5 py-1 transition flex items-center gap-1.5 shadow-2xs"
             >
               <span>{sq.icon}</span>
               <span>{sq.title}</span>
@@ -201,42 +246,76 @@ export const TutorView: React.FC<TutorViewProps> = ({
 
       {/* Error Notice */}
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-xs flex items-start gap-3">
+        <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-2xl text-red-700 dark:text-red-300 text-xs flex items-start gap-3">
           <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
           <div>
             <p className="font-semibold">Retrieval Notice</p>
-            <p className="text-red-600 mt-0.5">{error}</p>
+            <p className="mt-0.5">{error}</p>
           </div>
         </div>
       )}
 
-      {/* Answer Output (Cognify Clean Reader Style) */}
+      {/* Answer Output (Google NotebookLM Clean Reader Style) */}
       {answer && (
-        <div className="bg-white dark:bg-[#202020] rounded-2xl border border-slate-200/90 dark:border-zinc-800 p-6 md:p-8 shadow-xs space-y-6">
-          {/* Metadata bar */}
+        <div className="bg-white dark:bg-[#1e1f20] rounded-2xl border border-slate-200/90 dark:border-zinc-800 p-6 md:p-8 shadow-xs space-y-6 animate-in fade-in duration-200">
+          {/* Header Bar with Persona Badge & Copy Action */}
           <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-zinc-800 text-xs text-slate-500 dark:text-zinc-400">
-            <div className="flex items-center gap-3">
-              {answer.isSufficientlyGrounded ? (
-                <span className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Verified Citations ({Math.round(answer.groundingConfidence * 100)}% match)</span>
+            <div className="flex items-center gap-2.5">
+              <span className="text-base">
+                {tutorMode === 'kid' ? '🧸' : '🎓'}
+              </span>
+              <div>
+                <span className="font-bold text-slate-900 dark:text-white">
+                  {tutorMode === 'kid' ? 'Cognify Junior' : 'Cognify Scholar'}
                 </span>
-              ) : (
-                <span className="flex items-center gap-1.5 font-medium text-amber-600 dark:text-amber-400">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>General Knowledge Synthesis</span>
+                <span className="text-[11px] text-slate-500 dark:text-zinc-400 ml-1.5">
+                  ({tutorMode === 'kid' ? 'Everyday Analogies' : 'MCA Rigor & Citations'})
                 </span>
-              )}
-
-              <span aria-hidden="true" className="text-slate-300 dark:text-zinc-700">·</span>
-              <span>Model: <strong className="text-slate-800 dark:text-zinc-200 font-mono text-[11px]">{answer.model}</strong></span>
-              <span aria-hidden="true" className="text-slate-300 dark:text-zinc-700">·</span>
-              <span>Response: <strong className="text-slate-800 dark:text-zinc-200 font-mono text-[11px]">{answer.latencyMs}ms</strong></span>
+              </div>
             </div>
 
-            <div className="text-slate-500 dark:text-zinc-400 font-mono text-[11px]">
-              {answer.retrievedChunksCount} sources checked
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleCopy}
+                className="p-1.5 rounded-lg border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white transition flex items-center gap-1.5 text-xs shadow-2xs"
+                title="Copy Explanation"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-500" />
+                    <span className="text-emerald-600 dark:text-emerald-400 font-medium">Copied</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copy</span>
+                  </>
+                )}
+              </button>
             </div>
+          </div>
+
+          {/* Metadata bar */}
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-zinc-400">
+            {answer.isSufficientlyGrounded ? (
+              <span className="flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Verified Citations ({Math.round(answer.groundingConfidence * 100)}% match)</span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 font-medium text-indigo-600 dark:text-indigo-400">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Curriculum Synthesis</span>
+              </span>
+            )}
+
+            <span aria-hidden="true">·</span>
+            <span>Model: <strong className="text-slate-800 dark:text-zinc-200 font-mono text-[11px]">{answer.model}</strong></span>
+            <span aria-hidden="true">·</span>
+            <span>Response: <strong className="text-slate-800 dark:text-zinc-200 font-mono text-[11px]">{answer.latencyMs}ms</strong></span>
+            <span aria-hidden="true">·</span>
+            <span className="font-mono text-[11px]">{answer.retrievedChunksCount} sources checked</span>
           </div>
 
           {/* Answer Body */}
@@ -256,7 +335,7 @@ export const TutorView: React.FC<TutorViewProps> = ({
                 {answer.citations.map((cite, i) => (
                   <div
                     key={i}
-                    className="bg-slate-50 dark:bg-zinc-850 border border-slate-200 dark:border-zinc-800 rounded-xl p-3.5 text-xs space-y-1.5"
+                    className="bg-slate-50 dark:bg-zinc-850 border border-slate-200/80 dark:border-zinc-800 rounded-xl p-3.5 text-xs space-y-1.5"
                   >
                     <div className="flex items-center justify-between font-medium text-slate-900 dark:text-white">
                       <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 truncate">

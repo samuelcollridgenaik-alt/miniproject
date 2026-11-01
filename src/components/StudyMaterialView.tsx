@@ -10,6 +10,8 @@ import {
   Bookmark,
   FileText,
   Lightbulb,
+  BookOpen,
+  Zap,
 } from 'lucide-react';
 
 interface StudyMaterialViewProps {
@@ -25,14 +27,14 @@ export const StudyMaterialView: React.FC<StudyMaterialViewProps> = ({ documents 
     {
       id: 'fc_1',
       front: 'What are the 4 Coffman conditions required for deadlock to occur?',
-      back: 'Mutual Exclusion, Hold and Wait, No Preemption, and Circular Wait. If any one is broken, deadlock cannot occur.',
+      back: 'Mutual Exclusion, Hold and Wait, No Preemption, and Circular Wait. If any one condition is broken, deadlock cannot occur.',
       topicTag: 'Deadlock Characterization',
       citation: 'Operating Systems & Distributed Architectures (Section 4.1)',
     },
     {
       id: 'fc_2',
       front: 'How does the Raft consensus algorithm handle leader crash?',
-      back: 'Heartbeat timeout triggers a follower to become Candidate, increments currentTerm, votes for itself, and requests votes from peers. First to gain majority quorum becomes the new leader.',
+      back: 'Heartbeat timeout triggers a follower to become Candidate, increments currentTerm, votes for itself, and requests votes from peers. The first to gain majority quorum becomes the new leader.',
       topicTag: 'Distributed Consensus',
       citation: 'Operating Systems & Distributed Architectures (Section 7.2)',
     },
@@ -78,14 +80,17 @@ export const StudyMaterialView: React.FC<StudyMaterialViewProps> = ({ documents 
   }, [activeTab, flashcards.length, isFlipped, currentCardIndex]);
 
   const handleGenerateSummary = async () => {
-    if (!selectedDocId) return;
     setLoading(true);
     setError(null);
+    const customGeminiKey = localStorage.getItem('cognify_gemini_key') || '';
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (customGeminiKey) headers['x-gemini-key'] = customGeminiKey;
+
     try {
       const res = await fetch('/api/study/summary', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documentId: selectedDocId }),
+        headers,
+        body: JSON.stringify({ documentId: selectedDocId || undefined }),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
@@ -98,14 +103,17 @@ export const StudyMaterialView: React.FC<StudyMaterialViewProps> = ({ documents 
   };
 
   const handleGenerateFlashcards = async () => {
-    if (!selectedDocId) return;
     setLoading(true);
     setError(null);
+    const customGeminiKey = localStorage.getItem('cognify_gemini_key') || '';
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (customGeminiKey) headers['x-gemini-key'] = customGeminiKey;
+
     try {
       const res = await fetch('/api/study/flashcards', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documentId: selectedDocId, count: 8 }),
+        headers,
+        body: JSON.stringify({ documentId: selectedDocId || undefined, count: 6 }),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
@@ -144,35 +152,39 @@ export const StudyMaterialView: React.FC<StudyMaterialViewProps> = ({ documents 
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12 animate-in fade-in duration-200">
-      {/* Notion Page Breadcrumb & Header */}
-      <div className="border-b border-[#e9e9e7] dark:border-[#2f2f2f] pb-4">
-        <div className="flex items-center gap-2 text-xs text-[#787774] dark:text-[#9b9a97] mb-2 font-mono">
-          <span>Samuel's Brain</span>
-          <span>/</span>
-          <span>Learning & Recall</span>
-          <span>/</span>
-          <span className="text-[#37352f] dark:text-[#e3e2e0] font-medium">Active Recall Hub</span>
+      {/* Header with clean unboxed metadata */}
+      <div className="border-b border-slate-200/80 dark:border-zinc-800 pb-4">
+        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-zinc-400 mb-2">
+          <span>Cognify Workspace</span>
+          <span aria-hidden="true">·</span>
+          <span>Adaptive Recall</span>
+          <span aria-hidden="true">·</span>
+          <span className="text-slate-800 dark:text-white font-medium">Flashcards Hub</span>
         </div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="text-3xl">⚡</span>
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+              <Zap className="w-5 h-5" />
+            </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-[#37352f] dark:text-white">
-                Active Recall & Flashcard Hub
+              <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                Active Recall & Flashcards Hub
               </h1>
-              <p className="text-xs text-[#787774] dark:text-[#9b9a97]">
-                Evidence-based spaced repetition powered by Groq Llama 3.3 and verified course citations.
+              <p className="text-xs text-slate-500 dark:text-zinc-400">
+                Spaced repetition grounded in lecture materials & verified MCA curriculum citations.
               </p>
             </div>
           </div>
 
-          {/* Document Picker & Tab Switcher */}
+          {/* Document Picker & Segmented Controls */}
           <div className="flex items-center gap-2">
             <select
               value={selectedDocId}
               onChange={(e) => setSelectedDocId(e.target.value)}
-              className="text-xs rounded-md border border-[#e9e9e7] dark:border-[#333333] bg-[#fbfbfa] dark:bg-[#202020] text-[#37352f] dark:text-[#e3e2e0] px-2.5 py-1.5 focus:outline-none"
+              className="text-xs rounded-lg border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium"
             >
+              <option value="">All Uploaded Notes</option>
               {documents.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.title}
@@ -180,13 +192,13 @@ export const StudyMaterialView: React.FC<StudyMaterialViewProps> = ({ documents 
               ))}
             </select>
 
-            <div className="flex rounded-md bg-[#f1f1ef] dark:bg-[#252525] p-0.5 border border-[#e9e9e7] dark:border-[#333333]">
+            <div className="flex rounded-lg bg-slate-100 dark:bg-zinc-800 p-0.5 border border-slate-200/80 dark:border-zinc-700/80 text-xs">
               <button
                 onClick={() => setActiveTab('flashcards')}
-                className={`px-3 py-1 rounded text-xs font-semibold transition ${
+                className={`px-3 py-1 rounded-md font-semibold transition ${
                   activeTab === 'flashcards'
-                    ? 'bg-white dark:bg-[#333333] text-[#37352f] dark:text-white shadow-2xs'
-                    : 'text-[#787774] hover:text-[#37352f] dark:hover:text-white'
+                    ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-300 shadow-2xs'
+                    : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900'
                 }`}
               >
                 Cards ({flashcards.length})
@@ -196,13 +208,13 @@ export const StudyMaterialView: React.FC<StudyMaterialViewProps> = ({ documents 
                   setActiveTab('summary');
                   if (!summary) handleGenerateSummary();
                 }}
-                className={`px-3 py-1 rounded text-xs font-semibold transition ${
+                className={`px-3 py-1 rounded-md font-semibold transition ${
                   activeTab === 'summary'
-                    ? 'bg-white dark:bg-[#333333] text-[#37352f] dark:text-white shadow-2xs'
-                    : 'text-[#787774] hover:text-[#37352f] dark:hover:text-white'
+                    ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-300 shadow-2xs'
+                    : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900'
                 }`}
               >
-                Chapter Digest
+                Executive Digest
               </button>
             </div>
           </div>
@@ -210,16 +222,16 @@ export const StudyMaterialView: React.FC<StudyMaterialViewProps> = ({ documents 
       </div>
 
       {error && (
-        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-xs text-red-700 dark:text-red-300">
+        <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-xs text-red-700 dark:text-red-300">
           {error}
         </div>
       )}
 
-      {/* Notion Callout Box */}
-      <div className="p-3.5 rounded-lg bg-[#f7f6f3] dark:bg-[#202020] border-l-4 border-amber-400 text-xs flex items-start gap-3">
-        <Lightbulb className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-        <div className="text-[#37352f] dark:text-[#e3e2e0] leading-relaxed">
-          <span className="font-semibold">Notion Study Tip:</span> Press <kbd className="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 font-mono text-[10px]">Space</kbd> to flip the card, and <kbd className="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 font-mono text-[10px]">←</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 font-mono text-[10px]">→</kbd> to navigate. Rating cards tunes your spaced repetition cycle.
+      {/* Google Study Tip Callout */}
+      <div className="p-3.5 rounded-xl bg-indigo-50/60 dark:bg-zinc-800/60 border border-indigo-100/80 dark:border-zinc-700/60 text-xs flex items-start gap-3">
+        <Lightbulb className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+        <div className="text-slate-700 dark:text-zinc-300 leading-relaxed">
+          <span className="font-semibold text-slate-900 dark:text-white">Active Recall Tip:</span> Press <kbd className="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 font-mono text-[10px]">Space</kbd> to flip the card, and <kbd className="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 font-mono text-[10px]">←</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 font-mono text-[10px]">→</kbd> to navigate. Rating cards tunes your spaced repetition retention schedule.
         </div>
       </div>
 
@@ -227,21 +239,21 @@ export const StudyMaterialView: React.FC<StudyMaterialViewProps> = ({ documents 
         <div className="space-y-4">
           <div className="w-full max-w-2xl mx-auto">
             {flashcards.length === 0 ? (
-              <div className="p-12 text-center rounded-xl border border-dashed border-[#e9e9e7] dark:border-[#333333]">
-                <Layers className="w-8 h-8 text-[#9b9a97] mx-auto mb-2" />
-                <p className="text-xs text-[#787774] dark:text-[#9b9a97]">No flashcards generated yet for this module.</p>
+              <div className="p-12 text-center rounded-2xl border border-dashed border-slate-300 dark:border-zinc-700 bg-white dark:bg-[#1e1f20]">
+                <Layers className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                <p className="text-xs text-slate-600 dark:text-zinc-400">No flashcards generated yet for this module.</p>
                 <button
                   onClick={handleGenerateFlashcards}
                   disabled={loading}
-                  className="mt-3 px-4 py-2 rounded-md text-xs font-semibold bg-[#2383e2] text-white hover:bg-[#1d6fc2] transition shadow-2xs"
+                  className="mt-3 px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-xs"
                 >
-                  {loading ? 'Synthesizing Cards...' : '⚡ Generate New Cards with Groq'}
+                  {loading ? 'Synthesizing Cards...' : '⚡ Generate New Cards with Gemini'}
                 </button>
               </div>
             ) : (
               <div className="space-y-3">
                 {/* Progress bar and card tracker */}
-                <div className="flex items-center justify-between text-xs text-[#787774] dark:text-[#9b9a97]">
+                <div className="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
                   <span className="font-mono font-medium">
                     Card {currentCardIndex + 1} of {flashcards.length}
                   </span>
@@ -249,12 +261,12 @@ export const StudyMaterialView: React.FC<StudyMaterialViewProps> = ({ documents 
                     {flashcards.map((_, idx) => (
                       <span
                         key={idx}
-                        className={`w-2 h-2 rounded-full transition-all ${
+                        className={`h-1.5 rounded-full transition-all ${
                           idx === currentCardIndex
-                            ? 'w-5 bg-[#2383e2]'
+                            ? 'w-5 bg-indigo-600 dark:bg-indigo-400'
                             : confidenceRatings[idx]
-                            ? 'bg-emerald-500'
-                            : 'bg-black/10 dark:bg-white/10'
+                            ? 'w-2 bg-emerald-500'
+                            : 'w-2 bg-slate-200 dark:bg-zinc-700'
                         }`}
                       />
                     ))}
@@ -262,7 +274,7 @@ export const StudyMaterialView: React.FC<StudyMaterialViewProps> = ({ documents 
                   <button
                     onClick={handleGenerateFlashcards}
                     disabled={loading}
-                    className="hover:text-[#37352f] dark:hover:text-white flex items-center gap-1 font-medium transition"
+                    className="hover:text-slate-900 dark:hover:text-white flex items-center gap-1 font-medium transition"
                   >
                     <RotateCcw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
                     <span>Regenerate</span>
@@ -272,41 +284,41 @@ export const StudyMaterialView: React.FC<StudyMaterialViewProps> = ({ documents 
                 {/* Flip Card Stage */}
                 <div
                   onClick={() => setIsFlipped(!isFlipped)}
-                  className="cursor-pointer select-none min-h-[260px] p-8 rounded-2xl border border-[#e9e9e7] dark:border-[#2f2f2f] bg-white dark:bg-[#202020] shadow-sm hover:shadow-md transition-all flex flex-col justify-between group relative overflow-hidden"
+                  className="cursor-pointer select-none min-h-[260px] p-8 rounded-2xl border border-slate-200/90 dark:border-zinc-800 bg-white dark:bg-[#1e1f20] shadow-xs hover:shadow-md transition-all flex flex-col justify-between group relative overflow-hidden"
                 >
                   <div className="flex items-center justify-between text-xs">
-                    <span className="px-2 py-0.5 rounded font-mono text-[10px] uppercase font-bold bg-[#f1f1ef] dark:bg-[#2c2c2c] text-[#787774] dark:text-[#9b9a97]">
+                    <span className="font-mono text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
                       {currentCard?.topicTag || 'Active Recall'}
                     </span>
-                    <span className="text-[11px] font-medium text-[#9b9a97] flex items-center gap-1">
+                    <span className="text-[11px] font-medium text-slate-400 dark:text-zinc-500 flex items-center gap-1">
                       <RotateCcw className="w-3 h-3 group-hover:rotate-180 transition duration-300" />
-                      {isFlipped ? 'Click to show question' : 'Click or Space to reveal'}
+                      {isFlipped ? 'Click to show question' : 'Click or Space to flip'}
                     </span>
                   </div>
 
                   <div className="my-6 text-center">
                     {!isFlipped ? (
                       <div className="space-y-3">
-                        <span className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">
-                          QUESTION
+                        <span className="text-[11px] font-mono font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
+                          CONCEPT CHALLENGE
                         </span>
-                        <h3 className="text-lg md:text-xl font-bold text-[#37352f] dark:text-white leading-snug">
+                        <h3 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white leading-snug">
                           {currentCard?.front}
                         </h3>
                       </div>
                     ) : (
                       <div className="space-y-3 animate-in fade-in zoom-in-95 duration-150">
-                        <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
-                          ANSWER EXPLANATION
+                        <span className="text-[11px] font-mono font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+                          ACADEMIC EXPLANATION
                         </span>
-                        <p className="text-base text-[#37352f] dark:text-[#e3e2e0] leading-relaxed font-normal">
+                        <p className="text-base text-slate-800 dark:text-zinc-200 leading-relaxed font-normal">
                           {currentCard?.back}
                         </p>
                       </div>
                     )}
                   </div>
 
-                  <div className="border-t border-[#f1f1ef] dark:border-[#2a2a2a] pt-3 flex items-center justify-between text-[11px] text-[#9b9a97]">
+                  <div className="border-t border-slate-100 dark:border-zinc-800/80 pt-3 flex items-center justify-between text-[11px] text-slate-500 dark:text-zinc-400">
                     <span className="truncate max-w-[80%] font-mono">
                       📖 {currentCard?.citation || 'Verified Lecture Notes'}
                     </span>
@@ -322,7 +334,7 @@ export const StudyMaterialView: React.FC<StudyMaterialViewProps> = ({ documents 
                 <div className="flex items-center justify-between gap-2 pt-2">
                   <button
                     onClick={handlePrevCard}
-                    className="p-2 rounded-md border border-[#e9e9e7] dark:border-[#333333] hover:bg-black/5 dark:hover:bg-white/5 text-[#787774] dark:text-[#9b9a97]"
+                    className="p-2.5 rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 transition"
                     title="Previous Card"
                   >
                     <ChevronLeft className="w-4 h-4" />
@@ -331,19 +343,19 @@ export const StudyMaterialView: React.FC<StudyMaterialViewProps> = ({ documents 
                   <div className="flex-1 flex items-center justify-center gap-2">
                     <button
                       onClick={() => handleRate('hard')}
-                      className="px-3 py-1.5 rounded-md text-xs font-medium border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-300 hover:bg-red-100 transition shadow-2xs"
+                      className="px-3.5 py-1.5 rounded-xl text-xs font-medium border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-300 hover:bg-red-100 transition shadow-2xs"
                     >
                       Hard (1 Day)
                     </button>
                     <button
                       onClick={() => handleRate('good')}
-                      className="px-3 py-1.5 rounded-md text-xs font-medium border border-blue-200 dark:border-blue-900/60 bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300 hover:bg-blue-100 transition shadow-2xs"
+                      className="px-3.5 py-1.5 rounded-xl text-xs font-medium border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 transition shadow-2xs"
                     >
                       Good (3 Days)
                     </button>
                     <button
                       onClick={() => handleRate('easy')}
-                      className="px-3 py-1.5 rounded-md text-xs font-medium border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 transition shadow-2xs"
+                      className="px-3.5 py-1.5 rounded-xl text-xs font-medium border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 transition shadow-2xs"
                     >
                       Easy (7 Days)
                     </button>
@@ -351,7 +363,7 @@ export const StudyMaterialView: React.FC<StudyMaterialViewProps> = ({ documents 
 
                   <button
                     onClick={handleNextCard}
-                    className="p-2 rounded-md border border-[#e9e9e7] dark:border-[#333333] hover:bg-black/5 dark:hover:bg-white/5 text-[#787774] dark:text-[#9b9a97]"
+                    className="p-2.5 rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 transition"
                     title="Next Card"
                   >
                     <ChevronRight className="w-4 h-4" />
@@ -363,67 +375,109 @@ export const StudyMaterialView: React.FC<StudyMaterialViewProps> = ({ documents 
         </div>
       )}
 
+      {/* Chapter Digest / Summary Tab */}
       {activeTab === 'summary' && (
-        <div className="space-y-4">
-          {!summary && !loading ? (
-            <div className="p-12 text-center rounded-xl border border-dashed border-[#e9e9e7] dark:border-[#333333]">
-              <FileText className="w-8 h-8 text-[#9b9a97] mx-auto mb-2" />
-              <p className="text-xs text-[#787774] dark:text-[#9b9a97]">Generate an executive chapter summary from your uploaded materials.</p>
-              <button
-                onClick={handleGenerateSummary}
-                className="mt-3 px-4 py-2 rounded-md text-xs font-semibold bg-[#2383e2] text-white hover:bg-[#1d6fc2] shadow-2xs"
-              >
-                Synthesize Chapter Summary
-              </button>
+        <div className="space-y-6">
+          {loading && !summary ? (
+            <div className="p-12 text-center bg-white dark:bg-[#1e1f20] rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs">
+              <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-sm font-semibold text-slate-800 dark:text-white">Synthesizing chapter overview...</p>
+              <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">Extracting theorems, definitions, and exam priorities...</p>
             </div>
-          ) : loading ? (
-            <div className="p-12 text-center space-y-2">
-              <div className="w-6 h-6 border-2 border-[#2383e2] border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-xs text-[#787774] dark:text-[#9b9a97]">Groq Llama 3.3 is reading and condensing the course material...</p>
-            </div>
-          ) : (
-            <div className="p-6 rounded-xl border border-[#e9e9e7] dark:border-[#2f2f2f] bg-white dark:bg-[#202020] space-y-4">
+          ) : summary ? (
+            <div className="bg-white dark:bg-[#1e1f20] rounded-2xl border border-slate-200/90 dark:border-zinc-800 p-8 shadow-xs space-y-6">
               <div>
-                <span className="text-[10px] font-mono uppercase tracking-widest text-blue-600 dark:text-blue-400 font-bold">
-                  CHAPTER DIGEST
+                <span className="text-[11px] font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                  EXECUTIVE ACADEMIC BRIEFING
                 </span>
-                <h3 className="text-lg font-bold text-[#37352f] dark:text-white mt-1">
-                  {summary?.title || summary?.documentTitle || 'Course Notes Breakdown'}
-                </h3>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-1">
+                  {summary.title || 'Course Digest'}
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
+                  Source: {summary.documentTitle}
+                </p>
               </div>
 
-              <div className="p-3.5 rounded-lg bg-[#f7f6f3] dark:bg-[#252525] text-xs leading-relaxed text-[#37352f] dark:text-[#e3e2e0]">
-                {summary?.overview}
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-zinc-850/60 border border-slate-200/80 dark:border-zinc-750 text-xs text-slate-800 dark:text-zinc-200 leading-relaxed">
+                {summary.overview}
               </div>
 
-              {summary?.coreConcepts && summary.coreConcepts.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#9b9a97] font-mono">
-                    High-Yield Concepts
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {/* Core Concepts */}
+              {summary.coreConcepts && summary.coreConcepts.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    <span>Foundational Invariants & Theorems</span>
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {summary.coreConcepts.map((item, idx) => (
                       <div
                         key={idx}
-                        className="p-3 rounded-lg border border-[#e9e9e7] dark:border-[#2f2f2f] bg-[#fbfbfa] dark:bg-[#1f1f1f] text-xs"
+                        className="p-4 rounded-xl bg-slate-50/50 dark:bg-zinc-800/40 border border-slate-200/80 dark:border-zinc-800 space-y-1.5"
                       >
-                        <div className="font-semibold text-[#37352f] dark:text-white flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>{item.concept}</span>
-                        </div>
-                        <p className="text-[#787774] dark:text-[#9b9a97] mt-1 text-[11px] leading-relaxed">
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                          {item.concept}
+                        </h4>
+                        <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed">
                           {item.explanation}
                         </p>
                         {item.citation && (
-                          <div className="mt-2 text-[10px] text-blue-600 dark:text-blue-400 font-mono">
-                            📖 {item.citation}
-                          </div>
+                          <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono block pt-1">
+                            {item.citation}
+                          </span>
                         )}
                       </div>
                     ))}
                   </div>
                 </div>
               )}
+
+              {/* Formulas & Exam Points */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                {summary.formulasOrRules && summary.formulasOrRules.length > 0 && (
+                  <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-zinc-800/40 border border-slate-200/80 dark:border-zinc-800 space-y-2">
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                      📐 Mathematical Invariants
+                    </h4>
+                    <ul className="space-y-1.5 text-xs text-slate-700 dark:text-zinc-300 font-mono">
+                      {summary.formulasOrRules.map((rule, idx) => (
+                        <li key={idx} className="flex items-start gap-1.5">
+                          <span className="text-indigo-600 dark:text-indigo-400">•</span>
+                          <span>{rule}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {summary.examFocusPoints && summary.examFocusPoints.length > 0 && (
+                  <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-zinc-800/40 border border-slate-200/80 dark:border-zinc-800 space-y-2">
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                      🎯 High-Yield Exam Questions
+                    </h4>
+                    <ul className="space-y-1.5 text-xs text-slate-700 dark:text-zinc-300">
+                      {summary.examFocusPoints.map((point, idx) => (
+                        <li key={idx} className="flex items-start gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                          <span>{point}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="p-12 text-center bg-white dark:bg-[#1e1f20] rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs">
+              <FileText className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+              <p className="text-xs text-slate-600 dark:text-zinc-400">No executive digest compiled yet.</p>
+              <button
+                onClick={handleGenerateSummary}
+                disabled={loading}
+                className="mt-3 px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-xs"
+              >
+                Compile Executive Digest
+              </button>
             </div>
           )}
         </div>
