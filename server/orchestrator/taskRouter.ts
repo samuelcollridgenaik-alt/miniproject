@@ -1,6 +1,7 @@
 import { LLMProvider, LLMProviderId, LLMRequestOptions, LLMResponse, ProviderConfig } from '../types.js';
 import { geminiAdapter, geminiLiteAdapter } from './geminiAdapter.js';
 import { groqAdapter } from './groqAdapter.js';
+import { cognifyCurriculumAdapter } from './cognifyCurriculumAdapter.js';
 import { CONFIG } from '../config.js';
 
 export type AcademicTaskType = 'tutor' | 'summary' | 'flashcards' | 'quiz' | 'review' | 'comparison' | 'planner' | 'evaluation';
@@ -10,6 +11,7 @@ export class TaskRouter {
     gemini: geminiAdapter,
     'gemini-lite': geminiLiteAdapter,
     groq: groqAdapter,
+    'cognify-curriculum': cognifyCurriculumAdapter,
   };
 
   public getProvider(id: LLMProviderId): LLMProvider {
@@ -40,7 +42,7 @@ export class TaskRouter {
   }
 
   public async getDiagnostics(userKeys?: { gemini?: string; groq?: string }): Promise<ProviderConfig[]> {
-    const providerIds: LLMProviderId[] = ['gemini', 'gemini-lite', 'groq'];
+    const providerIds: LLMProviderId[] = ['gemini', 'gemini-lite', 'groq', 'cognify-curriculum'];
     const results: ProviderConfig[] = [];
 
     for (const id of providerIds) {
@@ -110,9 +112,8 @@ export class TaskRouter {
       );
 
       if (candidates.length === 0) {
-        throw new Error(
-          `Provider '${preferredId}' failed (${primaryErr.message}), and no alternate providers are configured to handle task '${task}'.`
-        );
+        console.log(`[TaskRouter] Primary provider '${preferredId}' unavailable for '${task}'. Activating Cognify Curriculum Engine...`);
+        return await this.providers['cognify-curriculum'].generate(prompt, options);
       }
 
       for (const fallbackId of candidates) {
@@ -128,9 +129,8 @@ export class TaskRouter {
         }
       }
 
-      throw new Error(
-        `Task '${task}' failed on primary provider '${preferredId}' (${primaryErr.message}) and all fallback attempts failed.`
-      );
+      console.log(`[TaskRouter] All remote candidate providers failed for task '${task}'. Activating Cognify Curriculum Engine...`);
+      return await this.providers['cognify-curriculum'].generate(prompt, options);
     }
   }
 

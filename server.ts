@@ -230,9 +230,11 @@ app.post('/api/auth/test-key', async (req: Request, res: Response) => {
 app.get('/api/diagnostics', async (req: Request, res: Response) => {
   try {
     const user = getAuthUser(req);
+    const customGeminiKey = (req.headers['x-gemini-key'] as string) || user.geminiApiKey;
+    const customGroqKey = (req.headers['x-groq-key'] as string) || user.groqApiKey;
     const diagnostics = await taskRouter.getDiagnostics({
-      gemini: user.geminiApiKey,
-      groq: user.groqApiKey,
+      gemini: customGeminiKey,
+      groq: customGroqKey,
     });
     const stats = executionLogger.getProviderStats();
     res.json({
@@ -415,19 +417,22 @@ The Raft consensus algorithm decomposes consensus into leader election, log repl
 // 3. MULTI-LLM WORKFLOWS
 // ----------------------------------------------------
 
-// Workflow A: Grounded Academic Tutor (Gemini)
+// Workflow A: Grounded Academic Tutor (Gemini / Cognify Curriculum)
 app.post('/api/tutor/ask', async (req: Request, res: Response) => {
   try {
     const user = getAuthUser(req);
     const { question, documentIdFilter, preferredProvider } = req.body;
+    const effectiveGeminiKey = (req.headers['x-gemini-key'] as string) || req.body?.geminiApiKey || user?.geminiApiKey;
+    const effectiveProvider = (req.headers['x-preferred-provider'] as any) || preferredProvider || 'gemini';
+
     if (!question || question.trim().length === 0) {
       return res.status(400).json({ success: false, error: 'Question is required.' });
     }
 
     const answer = await ragPipeline.answerGroundedQuestion(question, {
       documentIdFilter,
-      preferredProvider,
-      apiKeyOverride: user.geminiApiKey,
+      preferredProvider: effectiveProvider,
+      apiKeyOverride: effectiveGeminiKey,
     });
 
     res.json({ success: true, data: answer });
@@ -436,15 +441,16 @@ app.post('/api/tutor/ask', async (req: Request, res: Response) => {
   }
 });
 
-// Workflow B: Study Material Generation (Groq / Llama)
+// Workflow B: Study Material Generation (Gemini / Cognify Curriculum)
 app.post('/api/study/summary', async (req: Request, res: Response) => {
   try {
     const user = getAuthUser(req);
     const { documentId } = req.body;
+    const effectiveGeminiKey = (req.headers['x-gemini-key'] as string) || req.body?.geminiApiKey || user?.geminiApiKey;
     const userDocs = storage.getDocuments(user?.id);
     const targetDocId = documentId || (userDocs.length > 0 ? userDocs[0].id : undefined);
 
-    const summary = await studyMaterialService.generateSummary(targetDocId, user?.geminiApiKey);
+    const summary = await studyMaterialService.generateSummary(targetDocId, effectiveGeminiKey);
     if (targetDocId) {
       storage.saveStudyMaterial(targetDocId, 'summary', summary);
     }
@@ -458,10 +464,11 @@ app.post('/api/study/flashcards', async (req: Request, res: Response) => {
   try {
     const user = getAuthUser(req);
     const { documentId, count } = req.body;
+    const effectiveGeminiKey = (req.headers['x-gemini-key'] as string) || req.body?.geminiApiKey || user?.geminiApiKey;
     const userDocs = storage.getDocuments(user?.id);
     const targetDocId = documentId || (userDocs.length > 0 ? userDocs[0].id : undefined);
 
-    const flashcards = await studyMaterialService.generateFlashcards(targetDocId, count || 6, user?.geminiApiKey);
+    const flashcards = await studyMaterialService.generateFlashcards(targetDocId, count || 6, effectiveGeminiKey);
     if (targetDocId) {
       storage.saveStudyMaterial(targetDocId, 'flashcards', flashcards);
     }
@@ -475,7 +482,8 @@ app.post('/api/study/quiz', async (req: Request, res: Response) => {
   try {
     const user = getAuthUser(req);
     const { documentId, count } = req.body;
-    const questions = await studyMaterialService.generateQuiz(documentId, count || 5, user?.geminiApiKey);
+    const effectiveGeminiKey = (req.headers['x-gemini-key'] as string) || req.body?.geminiApiKey || user?.geminiApiKey;
+    const questions = await studyMaterialService.generateQuiz(documentId, count || 5, effectiveGeminiKey);
     res.json({ success: true, data: questions });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });

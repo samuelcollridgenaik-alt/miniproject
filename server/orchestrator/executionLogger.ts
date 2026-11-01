@@ -47,6 +47,7 @@ class ExecutionLogger {
       gemini: { totalRequests: 0, successfulRequests: 0, failedRequests: 0, avgLatencyMs: 0, totalPromptTokens: 0, totalCompletionTokens: 0, latencySum: 0 },
       'gemini-lite': { totalRequests: 0, successfulRequests: 0, failedRequests: 0, avgLatencyMs: 0, totalPromptTokens: 0, totalCompletionTokens: 0, latencySum: 0 },
       groq: { totalRequests: 0, successfulRequests: 0, failedRequests: 0, avgLatencyMs: 0, totalPromptTokens: 0, totalCompletionTokens: 0, latencySum: 0 },
+      'cognify-curriculum': { totalRequests: 0, successfulRequests: 0, failedRequests: 0, avgLatencyMs: 0, totalPromptTokens: 0, totalCompletionTokens: 0, latencySum: 0 },
     };
 
     for (const log of this.logs) {
@@ -70,7 +71,7 @@ class ExecutionLogger {
     }
 
     // Compute averages
-    for (const p of (['gemini', 'gemini-lite', 'groq'] as LLMProviderId[])) {
+    for (const p of (['gemini', 'gemini-lite', 'groq', 'cognify-curriculum'] as LLMProviderId[])) {
       stats[p].avgLatencyMs = stats[p].successfulRequests > 0
         ? Math.round(stats[p].latencySum / stats[p].successfulRequests)
         : 0;
@@ -80,6 +81,7 @@ class ExecutionLogger {
       gemini: { ...stats.gemini },
       'gemini-lite': { ...stats['gemini-lite'] },
       groq: { ...stats.groq },
+      'cognify-curriculum': { ...stats['cognify-curriculum'] },
     };
   }
 

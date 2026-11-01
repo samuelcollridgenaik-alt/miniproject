@@ -1,4 +1,4 @@
-export type LLMProviderId = 'gemini' | 'gemini-lite' | 'groq';
+export type LLMProviderId = 'gemini' | 'gemini-lite' | 'groq' | 'cognify-curriculum';
 
 export interface UserProfile {
   id: string;

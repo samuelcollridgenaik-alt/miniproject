@@ -13,7 +13,8 @@ import { ComparisonView } from './components/ComparisonView.js';
 import { ReviewView } from './components/ReviewView.js';
 import { StudyPlannerView } from './components/StudyPlannerView.js';
 import { EvaluationView } from './components/EvaluationView.js';
-import { DocumentMeta, ProviderDiagnostic, UserProfile } from './types.js';
+import { ModelSettingsModal } from './components/ModelSettingsModal.js';
+import { DocumentMeta, LLMProviderId, ProviderDiagnostic, UserProfile } from './types.js';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<NavTabId>('tutor');
@@ -21,8 +22,18 @@ export default function App() {
   const [documents, setDocuments] = useState<DocumentMeta[]>([]);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isModelSettingsOpen, setIsModelSettingsOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [activeProvider, setActiveProvider] = useState<LLMProviderId>(() => {
+    return (localStorage.getItem('cognify_preferred_provider') as LLMProviderId) || 'gemini';
+  });
+  const [geminiKey, setGeminiKey] = useState<string>(() => {
+    return localStorage.getItem('cognify_gemini_key') || '';
+  });
+  const [groqKey, setGroqKey] = useState<string>(() => {
+    return localStorage.getItem('cognify_groq_key') || '';
+  });
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (localStorage.getItem('cognify_theme') as 'light' | 'dark') || 'light';
   });
@@ -48,6 +59,8 @@ export default function App() {
       const activeId = userId || currentUser?.id || localStorage.getItem('cognify_user_id') || '';
       const headers: Record<string, string> = {};
       if (activeId) headers['x-user-id'] = activeId;
+      if (geminiKey) headers['x-gemini-key'] = geminiKey;
+      if (groqKey) headers['x-groq-key'] = groqKey;
 
       const res = await fetch('/api/diagnostics', { headers });
       const data = await res.json();
@@ -168,24 +181,49 @@ export default function App() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-[#ffffff] dark:bg-[#191919] text-[#37352f] dark:text-[#e3e2e0] flex font-sans antialiased selection:bg-[#2383e2]/20 selection:text-[#2383e2]">
-      {/* Notion Collapsible Sidebar */}
-      {currentUser && (
-        <NotionSidebar
-          activeTab={activeTab}
-          onSelectTab={setActiveTab}
-          isOpen={isSidebarOpen}
-          onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-          currentUser={currentUser}
-          onOpenAuth={() => setIsAuthOpen(true)}
-          onOpenSearch={() => setIsSearchOpen(true)}
-          docsCount={documents.length}
-        />
-      )}
+  const handleSaveGeminiKey = (key: string) => {
+    setGeminiKey(key);
+    localStorage.setItem('cognify_gemini_key', key);
+  };
 
-      {/* Main Notion Canvas */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
+  const handleSaveGroqKey = (key: string) => {
+    setGroqKey(key);
+    localStorage.setItem('cognify_groq_key', key);
+  };
+
+  const handleSelectProvider = (prov: LLMProviderId) => {
+    setActiveProvider(prov);
+    localStorage.setItem('cognify_preferred_provider', prov);
+  };
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-[#F8FAFD] dark:bg-[#131314] text-[#1F1F1F] dark:text-[#E3E3E3] font-sans antialiased transition-colors duration-150 selection:bg-indigo-500/20 selection:text-indigo-600">
+      {/* Collapsible Notion Sidebar */}
+      <NotionSidebar
+        activeTab={activeTab}
+        onSelectTab={(tab) => setActiveTab(tab)}
+        isOpen={isSidebarOpen}
+        onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+        currentUser={
+          currentUser || {
+            id: 'usr_default_samuel',
+            name: 'Samuel Collridge Naik',
+            email: 'samuelcollridgenaik@gmail.com',
+            role: 'student',
+            program: 'MCA',
+            semester: 'IV Semester',
+            studentId: 'MCA-2025-084',
+            institution: 'School of Computer Science & Applications',
+            createdAt: new Date().toISOString(),
+          }
+        }
+        onOpenAuth={() => setIsAuthOpen(true)}
+        onOpenSearch={() => setIsSearchOpen(true)}
+        docsCount={documents.length}
+      />
+
+      {/* Main Page Area */}
+      <div className="flex-1 flex flex-col h-screen overflow-y-auto min-w-0">
         {/* Top Notion Action & Breadcrumb Bar */}
         <NotionTopbar
           activeTab={activeTab}
@@ -197,21 +235,25 @@ export default function App() {
           onSelectTab={setActiveTab}
           providers={providers}
           totalDocs={documents.length}
+          onOpenModelSettings={() => setIsModelSettingsOpen(true)}
         />
 
         {/* Diagnostics / Configuration Alert */}
-        <DiagnosticsBanner providers={providers} />
+        <DiagnosticsBanner
+          providers={providers}
+          onOpenModelSettings={() => setIsModelSettingsOpen(true)}
+        />
 
         {/* Notion Page Workspace Content */}
         <main className="flex-1 px-4 sm:px-8 py-6 max-w-5xl w-full mx-auto">
           {loadingInitial ? (
             <div className="p-20 text-center space-y-3">
-              <div className="w-8 h-8 border-2 border-[#2383e2] border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-sm font-semibold text-[#37352f] dark:text-white">
+              <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="text-sm font-semibold text-slate-800 dark:text-white">
                 Opening Cognify Academic Workspace...
               </p>
-              <p className="text-xs text-[#787774] dark:text-[#9b9a97]">
-                Connecting to Google Gemini 3.8 and Groq Llama with user key vault...
+              <p className="text-xs text-slate-500 dark:text-zinc-400">
+                Grounding lecture notes and syllabus models...
               </p>
             </div>
           ) : (
@@ -235,6 +277,7 @@ export default function App() {
                 <QuizView
                   documents={documents}
                   onQuizCompleted={() => fetchDocuments(currentUser?.id)}
+                  onOpenModelSettings={() => setIsModelSettingsOpen(true)}
                 />
               )}
               {activeTab === 'mastery' && (
@@ -264,7 +307,7 @@ export default function App() {
         }}
       />
 
-      {/* User Management & API Key Vault Modal */}
+      {/* User Management & Profile Modal */}
       {isAuthOpen && (
         <LoginPage
           currentUser={currentUser}
@@ -274,6 +317,21 @@ export default function App() {
           onCloseModal={() => setIsAuthOpen(false)}
         />
       )}
+
+      {/* Model & API Key Settings Modal */}
+      <ModelSettingsModal
+        isOpen={isModelSettingsOpen}
+        onClose={() => setIsModelSettingsOpen(false)}
+        activeProvider={activeProvider}
+        onSelectProvider={handleSelectProvider}
+        geminiKey={geminiKey}
+        onSaveGeminiKey={handleSaveGeminiKey}
+        groqKey={groqKey}
+        onSaveGroqKey={handleSaveGroqKey}
+        providers={providers}
+        onRefreshDiagnostics={() => fetchDiagnostics(currentUser?.id)}
+      />
     </div>
   );
 }
+
