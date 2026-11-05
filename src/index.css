@@ -1,53 +1,52 @@
 @import "tailwindcss";
+@import "./design-system.css";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
   :root {
-    --notion-bg: #FFFFFF;
-    --notion-sidebar: #F7F6F3;
-    --notion-border: #E9E9E7;
-    --notion-text: #37352F;
-    --notion-muted: #787774;
-    --notion-hover: rgba(55, 53, 47, 0.06);
-    --notion-callout: #F1F1EF;
-    --notion-accent: #2383E2;
+    --notion-bg: #fafafa;
+    --notion-sidebar: #f1f1f1;
+    --notion-border: #dedede;
+    --notion-text: #242424;
+    --notion-muted: #686868;
+    --notion-hover: rgba(37, 99, 235, 0.07);
+    --notion-callout: #f0f0f0;
+    --notion-accent: #2563eb;
   }
 
   .dark {
     --notion-bg: #191919;
-    --notion-sidebar: #202020;
-    --notion-border: #2E2E2E;
-    --notion-text: #E3E2E0;
-    --notion-muted: #9B9A97;
-    --notion-hover: rgba(255, 255, 255, 0.06);
+    --notion-sidebar: #1d1d1d;
+    --notion-border: rgba(148, 163, 184, 0.16);
+    --notion-text: #ededed;
+    --notion-muted: #999999;
+    --notion-hover: rgba(96, 165, 250, 0.11);
     --notion-callout: #252525;
-    --notion-accent: #529CCA;
+    --notion-accent: #60a5fa;
   }
 
   body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif;
+    font-family:
+      "Inter",
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Helvetica,
+      "Apple Color Emoji",
+      Arial,
+      sans-serif;
     color: var(--notion-text);
-    background-color: var(--notion-bg);
+    background: var(--notion-bg);
+    min-width: 320px;
   }
 
-  code, pre, kbd {
-    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  code,
+  pre,
+  kbd {
+    font-family:
+      "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+      monospace;
   }
-}
-
-/* Custom Scrollbars in Notion style */
-::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(140, 140, 140, 0.28);
-  border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(140, 140, 140, 0.45);
 }
 
 /* 3D Flip Card for Flashcards */
@@ -68,4 +67,1187 @@
 .notion-callout {
   background-color: var(--notion-callout);
   border-left: 3px solid var(--notion-accent);
+}
+:root {
+  --surface: #fff;
+  --elevated: #f0f0f0;
+  --composer: #f0f0f0;
+  --user-bubble: #dbeafe;
+  --user-text: #173d72;
+}
+.dark {
+  --surface: #222;
+  --elevated: #2b2b2b;
+  --composer: #303030;
+  --user-bubble: #1d4277;
+  --user-text: #f2f6ff;
+  color-scheme: dark;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+body {
+  overflow: hidden;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+button,
+a,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+:focus-visible {
+  outline: 2px solid var(--notion-accent);
+  outline-offset: 3px;
+}
+.application-root,
+.app-shell {
+  height: 100dvh;
+  width: 100%;
+  min-width: 0;
+  color: var(--notion-text);
+  background: var(--notion-bg);
+}
+.app-shell {
+  display: flex;
+  overflow: hidden;
+  font-size: 13px;
+}
+.muted,
+.eyebrow {
+  color: var(--notion-muted);
+}
+.primary-rail {
+  width: 52px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--notion-border);
+  background: var(--notion-sidebar);
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 6px 10px;
+  z-index: 35;
+}
+.primary-rail button {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--notion-muted);
+}
+.primary-rail button svg {
+  width: 19px;
+  height: 19px;
+}
+.primary-rail button:hover,
+.primary-rail button[aria-current],
+.rail-brand {
+  background: var(--elevated);
+  color: var(--notion-text);
+}
+.primary-rail .rail-brand {
+  color: var(--notion-text);
+  margin-bottom: 10px;
+}
+.rail-bottom {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  background: var(--elevated);
+  color: var(--notion-text);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.workspace-sidebar {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  background: var(--notion-sidebar);
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--notion-border);
+  padding: 0 10px 10px;
+  position: relative;
+  min-width: 0;
+}
+.sidebar-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  height: 54px;
+  flex-shrink: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.sidebar-heading > span {
+  flex: 1;
+}
+.icon-button {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  flex-shrink: 0;
+  color: var(--notion-muted);
+}
+.icon-button:hover {
+  background: var(--elevated);
+  color: var(--notion-text);
+}
+.new-conversation {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+.new-conversation:hover {
+  background: var(--elevated);
+}
+.shortcut {
+  margin-left: auto;
+  color: var(--notion-muted);
+}
+.sidebar-scroll {
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
+}
+.recents h2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--notion-muted);
+  padding: 0 6px 8px;
+}
+.recents h2 span {
+  font-size: 9px;
+  border: 1px solid var(--notion-border);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+.history-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--notion-muted);
+  padding: 6px;
+  margin-bottom: 5px;
+}
+.history-search input {
+  width: 100%;
+  min-width: 0;
+  background: transparent;
+  font-size: 11px;
+  outline-offset: 0;
+}
+.empty-history {
+  font-size: 11px;
+  color: var(--notion-muted);
+  padding: 8px 6px;
+  line-height: 1.7;
+}
+.history-row {
+  display: flex;
+  border-radius: 6px;
+  min-width: 0;
+}
+.history-row:hover,
+.history-row.selected {
+  background: var(--elevated);
+}
+.history-row > button {
+  padding: 8px 4px;
+  color: var(--notion-muted);
+}
+.history-row > button:first-child {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  color: var(--notion-text);
+  font-size: 12px;
+}
+.history-row span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.history-row svg {
+  flex-shrink: 0;
+}
+.show-more {
+  font-size: 11px;
+  padding: 8px 6px;
+  color: var(--notion-muted);
+}
+.sidebar-focus {
+  padding: 8px 3px;
+  border-top: 1px solid var(--notion-border);
+}
+.profile-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 9px;
+  border-radius: 8px;
+  padding: 9px 6px;
+  text-align: left;
+}
+.profile-row:hover {
+  background: var(--elevated);
+}
+.profile-row > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.profile-row strong,
+.profile-row small {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.profile-row strong {
+  font-size: 12px;
+  font-weight: 500;
+}
+.profile-row small {
+  font-size: 10px;
+  color: var(--notion-muted);
+  margin-top: 2px;
+}
+.sidebar-resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -4px;
+  width: 8px;
+  z-index: 40;
+  cursor: col-resize;
+  touch-action: none;
+}
+.sidebar-resize:hover,
+.sidebar-resize:focus-visible {
+  background: color-mix(in srgb, var(--notion-accent) 35%, transparent);
+}
+.main-workspace {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+.workspace-topbar {
+  display: flex;
+  align-items: center;
+  height: 54px;
+  padding: 0 14px;
+  gap: 8px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--notion-border);
+}
+.conversation-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  min-width: 0;
+  scrollbar-width: thin;
+}
+.conversation-tab {
+  display: flex;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  flex-shrink: 0;
+  max-width: 238px;
+  height: 32px;
+  color: var(--notion-muted);
+}
+.conversation-tab.active {
+  border-color: var(--notion-border);
+  background: var(--surface);
+  color: var(--notion-text);
+}
+.conversation-tab > button:first-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 11px;
+  min-width: 0;
+  text-align: left;
+  font-size: 12px;
+}
+.conversation-tab span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.conversation-tab svg {
+  flex-shrink: 0;
+}
+.conversation-tab > button:last-child {
+  padding: 8px;
+  border-radius: 6px;
+}
+.conversation-tab > button:hover {
+  background: var(--elevated);
+}
+.module-tab {
+  white-space: nowrap;
+  font-size: 12px;
+  margin-right: 12px;
+}
+.topbar-tools {
+  display: flex;
+  margin-left: auto;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.main-workspace > div:has(> .max-w-7xl) {
+  background: var(--surface);
+  color: var(--notion-muted);
+  border-color: var(--notion-border);
+  flex-shrink: 0;
+}
+.chat-main {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+}
+.tutor-workspace {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+}
+.conversation-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 60px 28px 16px;
+}
+.chat-welcome {
+  min-height: 100%;
+  max-width: 660px;
+  margin: auto;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  padding: 35px 0;
+}
+.welcome-symbol {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--notion-border);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  background: var(--surface);
+}
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 2px;
+  margin-bottom: 14px;
+}
+.chat-welcome h1 {
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.5px;
+  line-height: 1.22;
+  text-align: center;
+}
+.chat-welcome h1 span {
+  color: var(--notion-muted);
+}
+.chat-welcome > p {
+  color: var(--notion-muted);
+  font-size: 12px;
+  line-height: 1.8;
+  text-align: center;
+  margin: 16px 0 26px;
+}
+.starter-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: min(100%, 470px);
+}
+.starter-grid button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--notion-border);
+  border-radius: 7px;
+  padding: 9px 12px;
+  text-align: left;
+  font-size: 12px;
+  color: var(--notion-muted);
+}
+.starter-grid button:hover {
+  background: var(--surface);
+  color: var(--notion-text);
+}
+.starter-grid button span {
+  flex: 1;
+}
+.welcome-notes {
+  margin-top: 20px;
+  font-size: 11px;
+  color: var(--notion-muted);
+  text-align: center;
+}
+.welcome-notes button {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.conversation-column {
+  width: 100%;
+  max-width: 736px;
+  margin: 0 auto;
+}
+.conversation-turn {
+  margin-bottom: 36px;
+}
+.user-message {
+  margin: 8px 0 30px auto;
+  width: fit-content;
+  max-width: 85%;
+  padding: 12px 17px;
+  border-radius: 20px 20px 5px 20px;
+  background: var(--user-bubble);
+  color: var(--user-text);
+  font-size: 13px;
+  line-height: 20px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.assistant-message {
+  font-size: 14px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.response-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 12px;
+}
+.response-meta span {
+  color: var(--notion-muted);
+  font-size: 10px;
+}
+.response-meta strong {
+  font-weight: 500;
+}
+.answer-text h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 18px 0 8px;
+}
+.answer-text pre {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--notion-border);
+  padding: 16px;
+  border-radius: 10px;
+  margin: 16px 0;
+  white-space: pre;
+  font-size: 12px;
+}
+.answer-text code {
+  background: var(--elevated);
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-size: 0.9em;
+}
+.answer-text pre code {
+  padding: 0;
+  background: transparent;
+}
+.answer-list-line {
+  padding-left: 12px;
+}
+.response-grounding {
+  margin-top: 18px;
+  font-size: 10px;
+  color: var(--notion-muted);
+}
+.citations {
+  margin-top: 12px;
+  border-top: 1px solid var(--notion-border);
+  padding-top: 12px;
+  font-size: 12px;
+}
+.citations summary {
+  cursor: pointer;
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  color: var(--notion-muted);
+}
+.citations blockquote {
+  background: var(--surface);
+  border: 1px solid var(--notion-border);
+  border-radius: 10px;
+  padding: 12px;
+  margin-top: 8px;
+}
+.citations blockquote p {
+  margin-top: 5px;
+  color: var(--notion-muted);
+}
+.response-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 12px;
+  color: var(--notion-muted);
+}
+.response-actions button {
+  padding: 6px;
+  border-radius: 5px;
+}
+.response-actions button:hover {
+  background: var(--elevated);
+}
+.response-actions span {
+  font-size: 11px;
+}
+.thinking {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--notion-muted);
+  font-size: 12px;
+  padding-bottom: 20px;
+}
+.thinking button,
+.chat-error button {
+  text-decoration: underline;
+  margin-left: 12px;
+}
+.chat-error,
+.storage-warning {
+  background: var(--surface);
+  border: 1px solid var(--notion-border);
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+.composer-region {
+  flex-shrink: 0;
+  padding: 10px 28px 7px;
+  width: 100%;
+  max-width: 792px;
+  margin: 0 auto;
+}
+.message-composer {
+  border: 1px solid var(--notion-border);
+  background: var(--composer);
+  border-radius: 24px;
+  padding: 12px 12px 10px;
+  box-shadow: 0 3px 14px #00000008;
+}
+.message-composer:focus-within {
+  border-color: var(--notion-muted);
+}
+.message-composer textarea {
+  width: 100%;
+  resize: none;
+  background: transparent;
+  padding: 0 5px;
+  outline: none;
+  display: block;
+  font-size: 13px;
+  line-height: 20px;
+  min-height: 36px;
+  max-height: 180px;
+}
+.message-composer textarea::placeholder {
+  color: var(--notion-muted);
+}
+.composer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.composer-toolbar select {
+  background: transparent;
+  border: 0;
+  padding: 5px 3px;
+  max-width: 150px;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--notion-muted);
+  cursor: pointer;
+}
+.composer-toolbar select option {
+  background: var(--surface);
+  color: var(--notion-text);
+}
+.composer-spacer {
+  flex: 1;
+}
+.send-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  background: var(--notion-text);
+  color: var(--notion-bg);
+  border-radius: 50%;
+}
+.send-button:hover:not(:disabled) {
+  opacity: 0.8;
+}
+.composer-footnote {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--notion-muted);
+  font-size: 9px;
+  margin: 8px 6px 0;
+  line-height: 10px;
+}
+.scroll-bottom {
+  position: absolute;
+  bottom: 180px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 11px;
+  border-radius: 20px;
+  background: var(--surface);
+  border: 1px solid var(--notion-border);
+  font-size: 11px;
+}
+.module-main {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+  min-width: 0;
+  padding: 32px;
+}
+.module-content {
+  max-width: 1080px;
+  margin: 0 auto;
+}
+.module-content > * {
+  min-width: 0;
+}
+.workspace-loading {
+  margin: auto;
+  padding: 40px;
+  color: var(--notion-muted);
+}
+.sidebar-backdrop,
+.mobile-close {
+  display: none;
+}
+::-webkit-scrollbar {
+  width: 6px;
+  height: 5px;
+}
+::-webkit-scrollbar-thumb {
+  background: #8885;
+  border-radius: 8px;
+}
+@media (max-width: 1023px) {
+  .workspace-sidebar {
+    position: fixed;
+    left: 52px;
+    top: 0;
+    bottom: 0;
+    z-index: 45;
+    width: min(var(--sidebar-width), calc(100vw - 68px));
+    box-shadow: 12px 0 40px #0004;
+  }
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0 0 0 52px;
+    z-index: 40;
+    background: #0006;
+  }
+  .sidebar-resize {
+    display: none;
+  }
+  .mobile-close {
+    display: inline-flex;
+  }
+}
+@media (max-width: 767px) {
+  .primary-rail {
+    width: 44px;
+    padding: 10px 4px;
+    gap: 10px;
+  }
+  .primary-rail button {
+    width: 32px;
+    height: 34px;
+  }
+  .workspace-sidebar {
+    left: 44px;
+  }
+  .sidebar-backdrop {
+    left: 44px;
+  }
+  .workspace-topbar {
+    padding: 0 8px;
+    gap: 4px;
+    height: 52px;
+  }
+  .topbar-tools {
+    gap: 0;
+  }
+  .topbar-tools > button:first-child {
+    display: none;
+  }
+  .conversation-tab {
+    max-width: 155px;
+  }
+  .conversation-tab > button:first-child {
+    font-size: 11px;
+    padding-left: 7px;
+    gap: 5px;
+  }
+  .conversation-scroll {
+    padding: 20px 16px 12px;
+  }
+  .chat-welcome {
+    padding: 24px 0;
+  }
+  .chat-welcome h1 {
+    font-size: 27px;
+    letter-spacing: -0.8px;
+  }
+  .eyebrow {
+    font-size: 8px;
+    letter-spacing: 1.5px;
+  }
+  .starter-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    max-width: 280px;
+  }
+  .starter-grid button {
+    padding: 10px 12px;
+  }
+  .chat-welcome > p {
+    font-size: 11px;
+    margin-bottom: 20px;
+  }
+  .welcome-symbol {
+    margin-bottom: 18px;
+    width: 44px;
+    height: 44px;
+  }
+  .composer-region {
+    padding: 8px 10px max(8px, env(safe-area-inset-bottom));
+  }
+  .message-composer {
+    padding: 12px 10px 8px;
+    border-radius: 17px;
+  }
+  .message-composer textarea {
+    font-size: 16px;
+  }
+  .composer-toolbar {
+    flex-wrap: wrap;
+    gap: 3px;
+  }
+  .composer-toolbar select {
+    max-width: 110px;
+    font-size: 10px;
+  }
+  .composer-toolbar .provider-select {
+    max-width: 130px;
+    margin-left: auto;
+  }
+  .composer-spacer {
+    flex-basis: 100%;
+  }
+  .composer-footnote {
+    font-size: 8px;
+    justify-content: center;
+  }
+  .composer-footnote span {
+    display: none;
+  }
+  .module-main {
+    padding: 20px 12px;
+  }
+  .response-meta {
+    flex-wrap: wrap;
+  }
+  .user-message {
+    max-width: 94%;
+  }
+  .assistant-message {
+    font-size: 13px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+.answer-text p {
+  margin: 10px 0;
+}
+.answer-text ul,
+.answer-text ol {
+  padding-left: 24px;
+  margin: 10px 0;
+}
+.answer-text ul {
+  list-style: disc;
+}
+.answer-text ol {
+  list-style: decimal;
+}
+.answer-text li {
+  padding-left: 3px;
+  margin: 5px 0;
+}
+.answer-text h1,
+.answer-text h2,
+.answer-text h3,
+.answer-text h4 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 20px 0 10px;
+}
+.answer-text blockquote {
+  border-left: 2px solid var(--notion-border);
+  padding-left: 14px;
+  color: var(--notion-muted);
+  margin: 12px 0;
+}
+.answer-text a {
+  color: var(--notion-accent);
+  text-decoration: underline;
+}
+.answer-text table {
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+  max-width: 100%;
+  font-size: 12px;
+  margin: 15px 0;
+}
+.answer-text th,
+.answer-text td {
+  border: 1px solid var(--notion-border);
+  padding: 8px 12px;
+}
+.answer-text th {
+  background: var(--surface);
+  text-align: left;
+}
+.answer-text .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 8px 0;
+}
+.answer-text pre code.hljs {
+  background: transparent;
+  color: inherit;
+}
+:root:not(.dark) .hljs-keyword,
+:root:not(.dark) .hljs-selector-tag {
+  color: #963266;
+}
+:root:not(.dark) .hljs-string,
+:root:not(.dark) .hljs-title {
+  color: #225aa0;
+}
+:root:not(.dark) .hljs-comment {
+  color: #656565;
+}
+
+/* Keep timer state mounted while collapsed, with no hidden navigation in the tab order. */
+.workspace-sidebar[hidden] {
+  display: none;
+}
+
+/* Conversation shell: dimensions measured from the supplied desktop reference. */
+.rail-module {
+  position: relative;
+  flex-shrink: 0;
+}
+.rail-tooltip {
+  position: absolute;
+  left: calc(100% + 14px);
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  background: var(--elevated);
+  color: var(--notion-text);
+  border: 1px solid var(--notion-border);
+  border-radius: 6px;
+  padding: 6px 9px;
+  font-size: 12px;
+  box-shadow: 0 3px 12px #0003;
+  pointer-events: none;
+  visibility: hidden;
+  z-index: 100;
+}
+.rail-module:hover .rail-tooltip,
+.rail-module:focus-visible .rail-tooltip {
+  visibility: visible;
+}
+.history-search[hidden],
+.workspace-controls-panel[hidden] {
+  display: none;
+}
+.history-actions {
+  position: relative;
+}
+.history-actions > button {
+  opacity: 0;
+}
+.history-row:hover .history-actions > button,
+.history-row:focus-within .history-actions > button {
+  opacity: 1;
+}
+.history-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 130px;
+  padding: 4px;
+  border: 1px solid var(--notion-border);
+  border-radius: 7px;
+  background: var(--surface);
+  z-index: 50;
+  box-shadow: 0 5px 16px #0004;
+}
+.history-menu button {
+  width: 100%;
+  gap: 8px;
+  padding: 8px;
+}
+.history-row {
+  min-height: 30px;
+}
+.sidebar-resize:hover,
+.sidebar-resize:focus-visible {
+  background: transparent;
+}
+.sidebar-resize::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+.sidebar-resize:hover::after,
+.sidebar-resize:focus-visible::after {
+  background: var(--notion-muted);
+}
+.workspace-controls {
+  position: relative;
+}
+.workspace-controls-panel {
+  position: absolute;
+  right: 0;
+  top: 38px;
+  width: 290px;
+  max-width: calc(100vw - 64px);
+  max-height: calc(100dvh - 70px);
+  overflow: auto;
+  padding: 16px;
+  border-radius: 9px;
+  border: 1px solid var(--notion-border);
+  background: var(--surface);
+  box-shadow: 0 8px 24px #0004;
+  z-index: 60;
+}
+.provider-status {
+  padding: 12px 0;
+  color: var(--notion-muted);
+  font-size: 11px;
+}
+.provider-status p {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+@media (max-height: 620px) {
+  .primary-rail {
+    gap: 2px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+  .primary-rail button {
+    height: 30px;
+  }
+  .rail-bottom {
+    gap: 2px;
+  }
+}
+@media (pointer: coarse) {
+  .history-actions > button {
+    opacity: 1;
+  }
+}
+
+.conversation-tabs {
+  overflow-y: hidden;
+  scrollbar-width: none;
+  min-height: 36px;
+}
+.conversation-tabs::-webkit-scrollbar {
+  display: none;
+}
+.conversation-title-field {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+  font-size: 12px;
+}
+.conversation-title-field input {
+  width: 100%;
+}
+.conversation-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+:root {
+  --rail-width: 52px;
+  --workspace-header-height: 54px;
+  --conversation-tab-height: 32px;
+  --chat-column-width: 736px;
+  --chat-gutter: 28px;
+  --composer-radius: 24px;
+}
+.dark {
+  --notion-bg: #181818;
+  --notion-sidebar: #1b1b1b;
+  --composer: #363636;
+  --user-bubble: #173e76;
+}
+.primary-rail {
+  width: var(--rail-width);
+  background: var(--notion-sidebar);
+}
+.dark .primary-rail {
+  background: #202020;
+}
+.workspace-topbar,
+.sidebar-heading {
+  height: var(--workspace-header-height);
+}
+.conversation-tab {
+  height: var(--conversation-tab-height);
+}
+.conversation-column {
+  max-width: var(--chat-column-width);
+}
+.composer-region {
+  max-width: calc(var(--chat-column-width) + var(--chat-gutter) * 2);
+}
+.message-composer {
+  border-radius: var(--composer-radius);
+}
+.rail-tooltip.dismissed {
+  visibility: hidden !important;
+}
+@media (max-width: 767px) {
+  :root {
+    --rail-width: 44px;
+    --workspace-header-height: 52px;
+    --chat-gutter: 10px;
+  }
+}
+
+.conversation-scroll {
+  scrollbar-gutter: stable both-edges;
+}
+.history-actions > button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 30px;
+}
+
+.module-tab {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+@media (max-width: 767px) {
+  .module-tab {
+    max-width: 140px;
+  }
+}
+@media (hover: none) {
+  .rail-module:hover:not(:focus-visible) .rail-tooltip {
+    visibility: hidden;
+  }
 }

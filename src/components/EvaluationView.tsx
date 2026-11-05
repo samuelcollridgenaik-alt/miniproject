@@ -1,504 +1,451 @@
-import React, { useEffect, useState } from 'react';
-import { ProviderDiagnostic } from '../types.js';
-import { Terminal, CheckCircle2, XCircle, Play, BarChart2, Cpu, ShieldCheck, Clock, Zap, Award, CheckSquare, FileText } from 'lucide-react';
-
-interface EvaluationViewProps {
+import React, { useEffect, useState } from "react";
+import { FlaskConical, Play, RefreshCw } from "lucide-react";
+import type { ProviderDiagnostic } from "../types.js";
+import { apiJson } from "../lib/api.js";
+import { EmptyState, PageHeading, StatusMessage } from "./ui/Primitives.js";
+interface TestResults {
+  totalTests: number;
+  passedTests: number;
+  failedTests: number;
+  tests: {
+    suiteName: string;
+    testName: string;
+    passed: boolean;
+    durationMs: number;
+    message: string;
+  }[];
+}
+interface Benchmark {
+  metrics: {
+    recallAt1: number;
+    recallAt3: number;
+    citationAccuracyRate: number;
+    timestamp?: string;
+  };
+  evaluatedItems: {
+    question: string;
+    recall1Hit: boolean;
+    recall3Hit: boolean;
+    citationVerified: boolean;
+    topChunkRetrieved: string;
+  }[];
+}
+interface Log {
+  id: string;
+  timestamp: string;
+  taskType: string;
+  provider: string;
+  model: string;
+  latencyMs: number;
+  success: boolean;
+}
+interface ProviderStats {
+  totalRequests: number;
+  successfulRequests: number;
+  failedRequests: number;
+  avgLatencyMs: number;
+}
+interface Props {
   providers: ProviderDiagnostic[];
   onRefreshProviders: () => void;
 }
-
-export const EvaluationView: React.FC<EvaluationViewProps> = ({
-  providers,
-  onRefreshProviders,
-}) => {
-  const [activeSubTab, setActiveSubTab] = useState<'rubric' | 'tests' | 'benchmark' | 'logs'>('rubric');
-  const [runningTests, setRunningTests] = useState(false);
-  const [testResults, setTestResults] = useState<any>(null);
-
-  const [runningBenchmark, setRunningBenchmark] = useState(false);
-  const [benchmarkData, setBenchmarkData] = useState<any>(null);
-
-  const [logs, setLogs] = useState<any[]>([]);
-  const [stats, setStats] = useState<any>(null);
-  const [loadingLogs, setLoadingLogs] = useState(false);
-
-  const runUnitTests = async () => {
-    setRunningTests(true);
+const views = [
+  ["rubric", "Academic Rubric"],
+  ["tests", "Unit Tests"],
+  ["benchmark", "RAG Benchmark"],
+  ["logs", "Execution Logs"],
+] as const;
+export function EvaluationView({ providers, onRefreshProviders }: Props) {
+  const [tab, setTab] = useState<(typeof views)[number][0]>("rubric");
+  const [testResults, setTestResults] = useState<TestResults | null>(null);
+  const [benchmark, setBenchmark] = useState<Benchmark | null>(null);
+  const [logs, setLogs] = useState<Log[]>([]);
+  const [stats, setStats] = useState<Record<string, ProviderStats>>({});
+  const [loadedLogs, setLoadedLogs] = useState(false);
+  const [busy, setBusy] = useState<Record<string, boolean>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  async function run<T>(
+    key: string,
+    url: string,
+    method: string,
+    onResult: (data: T) => void,
+  ) {
+    setBusy((b) => ({ ...b, [key]: true }));
+    setErrors((e) => ({ ...e, [key]: "" }));
     try {
-      const res = await fetch('/api/evaluation/run-tests', { method: 'POST' });
-      const data = await res.json();
-      if (data.success) {
-        setTestResults(data);
-      }
-    } catch (e) {
-      console.error(e);
+      const result = await apiJson<T>(url, { method });
+      onResult(result);
+    } catch (error) {
+      setErrors((e) => ({
+        ...e,
+        [key]:
+          error instanceof Error
+            ? error.message
+            : "Request failed. Please retry.",
+      }));
     } finally {
-      setRunningTests(false);
+      setBusy((b) => ({ ...b, [key]: false }));
     }
-  };
-
-  const runBenchmark = async () => {
-    setRunningBenchmark(true);
-    try {
-      const res = await fetch('/api/evaluation/run-benchmark', { method: 'POST' });
-      const data = await res.json();
-      if (data.success) {
-        setBenchmarkData(data);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setRunningBenchmark(false);
-    }
-  };
-
-  const fetchLogs = async () => {
-    setLoadingLogs(true);
-    try {
-      const res = await fetch('/api/logs?limit=50');
-      const data = await res.json();
-      if (data.success) {
+  }
+  const tests = () =>
+    run<TestResults>(
+      "tests",
+      "/api/evaluation/run-tests",
+      "POST",
+      setTestResults,
+    );
+  const benchmarkRun = () =>
+    run<Benchmark>(
+      "benchmark",
+      "/api/evaluation/run-benchmark",
+      "POST",
+      setBenchmark,
+    );
+  const loadLogs = () =>
+    run<{ logs: Log[]; stats: Record<string, ProviderStats> }>(
+      "logs",
+      "/api/logs?limit=50",
+      "GET",
+      (data) => {
         setLogs(data.logs || []);
-        setStats(data.stats || null);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingLogs(false);
-    }
-  };
-
+        setStats(data.stats || {});
+        setLoadedLogs(true);
+      },
+    );
   useEffect(() => {
-    runUnitTests();
-    runBenchmark();
-    fetchLogs();
-  }, []);
-
+    if (tab === "logs" && !loadedLogs) loadLogs();
+  }, [tab]);
   return (
-    <div className="space-y-6">
-      {/* Top Banner (Google Evaluation Suite) */}
-      <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-              <Award className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-slate-900">
-                MCA Mini Project Evaluation & Benchmark Report
-              </h2>
-              <p className="text-xs text-slate-500">
-                Empirical verification for academic defense: Recall@k, faithfulness, citation mapping, and test suites.
-              </p>
-            </div>
-          </div>
-
-          {/* Sub-tabs */}
-          <div className="flex flex-wrap gap-1.5 bg-slate-100 p-1 rounded-full border border-slate-200">
-            <button
-              onClick={() => setActiveSubTab('rubric')}
-              className={`px-3.5 py-1 rounded-full text-xs font-semibold transition ${
-                activeSubTab === 'rubric'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Academic Rubric
-            </button>
-            <button
-              onClick={() => setActiveSubTab('tests')}
-              className={`px-3.5 py-1 rounded-full text-xs font-semibold transition ${
-                activeSubTab === 'tests'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Unit Tests
-            </button>
-            <button
-              onClick={() => setActiveSubTab('benchmark')}
-              className={`px-3.5 py-1 rounded-full text-xs font-semibold transition ${
-                activeSubTab === 'benchmark'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              RAG Benchmark
-            </button>
-            <button
-              onClick={() => setActiveSubTab('logs')}
-              className={`px-3.5 py-1 rounded-full text-xs font-semibold transition ${
-                activeSubTab === 'logs'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Execution Logs
-            </button>
-          </div>
-        </div>
+    <div className="ui-page">
+      <PageHeading
+        icon={FlaskConical}
+        title="MCA Viva & Evaluator Lab"
+        description="Inspect system checks, retrieval benchmarks and provider execution records. Run evaluations when you need fresh evidence."
+      />
+      <div className="ui-tabs" aria-label="Evaluation views">
+        {views.map(([id, label]) => (
+          <button
+            key={id}
+            className={`ui-control px-3 py-2 text-xs ${tab === id ? "bg-accent-soft text-accent" : "text-muted hover:bg-elevated"}`}
+            aria-pressed={tab === id}
+            onClick={() => setTab(id)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
-
-      {/* SUB-TAB 0: ACADEMIC EVALUATION RUBRIC */}
-      {activeSubTab === 'rubric' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-8 shadow-sm space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+      {Object.entries(errors)
+        .filter(([, message]) => message)
+        .map(([key, message]) => (
+          <StatusMessage key={key} tone="error">
+            {key}: {message}
+          </StatusMessage>
+        ))}
+      {tab === "rubric" && (
+        <>
+          <section className="ui-panel">
+            <div className="ui-module-header mb-5">
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-3 py-1 rounded-full">
-                  Examiner Defense Checklist
-                </span>
-                <h3 className="text-lg font-bold text-slate-900 mt-2">
-                  Cognify AI: System Verification & Project Deliverables
-                </h3>
+                <h2 className="text-base font-semibold">
+                  Capabilities to demonstrate
+                </h2>
+                <p className="text-xs text-muted mt-2">
+                  This checklist describes implementation scope. It does not
+                  certify correctness or production readiness.
+                </p>
               </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    runUnitTests();
-                    runBenchmark();
-                  }}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-full flex items-center gap-1.5 transition shadow-xs"
-                >
-                  <Play className="w-3.5 h-3.5" />
-                  Run All Evaluations
-                </button>
-              </div>
+              <button
+                className="ui-control ui-button"
+                disabled={busy.tests || busy.benchmark}
+                onClick={() => {
+                  tests();
+                  benchmarkRun();
+                }}
+              >
+                <Play size={15} />
+                {busy.tests || busy.benchmark
+                  ? "Evaluating…"
+                  : "Run All Evaluations"}
+              </button>
             </div>
-
-            {/* Evaluation Criteria Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-2">
-                <div className="flex items-center justify-between font-bold text-slate-900 text-xs">
-                  <span>1. Multi-LLM Orchestration Layer</span>
-                  <span className="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full text-[10px]">
-                    VERIFIED
-                  </span>
+              {[
+                [
+                  "Provider orchestration",
+                  "Inspect configured adapters and the actual model returned by each request.",
+                ],
+                [
+                  "Document retrieval",
+                  "Review retrieved excerpts and source labels; similarity is not a guarantee of answer accuracy.",
+                ],
+                [
+                  "Assessment & mastery",
+                  "Demonstrate question selection, scoring and recorded topic accuracy.",
+                ],
+                [
+                  "Revision planning",
+                  "Inspect time allocation, target dates and feasibility constraints.",
+                ],
+              ].map(([title, description]) => (
+                <div
+                  className="bg-subtle border border-default rounded-xl p-4"
+                  key={title}
+                >
+                  <h3 className="text-sm font-medium">{title}</h3>
+                  <p className="text-xs text-muted mt-2 leading-relaxed">
+                    {description}
+                  </p>
                 </div>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Decoupled provider abstraction supporting Google Gemini 3.8 Flash (tutor & review) and Groq Llama 3.3 (summaries & quizzes) with real-time latency and token tracking.
-                </p>
-              </div>
-
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-2">
-                <div className="flex items-center justify-between font-bold text-slate-900 text-xs">
-                  <span>2. Grounded RAG & Real Document Citations</span>
-                  <span className="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full text-[10px]">
-                    VERIFIED
-                  </span>
-                </div>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Sentence-aware chunking preserving page/slide numbers. Strict citations [Doc: Title, Page/Slide N] with grounding confidence and insufficient context guards.
-                </p>
-              </div>
-
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-2">
-                <div className="flex items-center justify-between font-bold text-slate-900 text-xs">
-                  <span>3. Structured Quizzes & Mastery Analytics</span>
-                  <span className="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full text-[10px]">
-                    VERIFIED
-                  </span>
-                </div>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  JSON-validated multiple-choice quizzes with options A/B/C/D. Mathematical mastery formula (Σ Correct / Σ Attempted) with automatic weak-topic tagging.
-                </p>
-              </div>
-
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-2">
-                <div className="flex items-center justify-between font-bold text-slate-900 text-xs">
-                  <span>4. Constrained Revision Planner</span>
-                  <span className="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full text-[10px]">
-                    VERIFIED
-                  </span>
-                </div>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Mathematical feasibility check ensuring daily study minutes allocate weak-topic weights while strictly not exceeding user-defined daily study capacity.
-                </p>
-              </div>
+              ))}
             </div>
-
-            {/* Quick Metrics Glance */}
-            {benchmarkData && (
-              <div className="pt-4 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-2xl">
-                  <div className="text-[10px] font-bold text-blue-700 uppercase">Recall @ 1</div>
-                  <div className="text-xl font-bold text-blue-900 mt-0.5">{benchmarkData.metrics.recallAt1}%</div>
-                </div>
-                <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-2xl">
-                  <div className="text-[10px] font-bold text-emerald-700 uppercase">Recall @ 3</div>
-                  <div className="text-xl font-bold text-emerald-900 mt-0.5">{benchmarkData.metrics.recallAt3}%</div>
-                </div>
-                <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-2xl">
-                  <div className="text-[10px] font-bold text-indigo-700 uppercase">Citation Accuracy</div>
-                  <div className="text-xl font-bold text-indigo-900 mt-0.5">{benchmarkData.metrics.citationAccuracyRate}%</div>
-                </div>
-                <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-2xl">
-                  <div className="text-[10px] font-bold text-amber-700 uppercase">Zero-Hallucination</div>
-                  <div className="text-xl font-bold text-amber-900 mt-0.5">{benchmarkData.metrics.faithfulnessRate}%</div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* SUB-TAB 1: UNIT TESTS */}
-      {activeSubTab === 'tests' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-8 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">Automated System Unit Tests</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Verifies sentence chunking, cosine mathematics, learning analytics formulas, and time constraints.
-                </p>
-              </div>
-
+          </section>
+          <section className="ui-panel">
+            <div className="ui-data-row mb-4">
+              <h2 className="text-base font-semibold">Provider diagnostics</h2>
               <button
-                onClick={runUnitTests}
-                disabled={runningTests}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-full text-xs font-semibold flex items-center gap-1.5 transition shadow-xs"
+                className="ui-control px-3 text-accent text-xs"
+                onClick={onRefreshProviders}
               >
-                <Play className="w-3.5 h-3.5" />
-                {runningTests ? 'Running...' : 'Re-Run Tests'}
+                <RefreshCw size={13} className="inline mr-2" />
+                Refresh diagnostics
               </button>
             </div>
-
-            {testResults && (
-              <div className="space-y-4">
-                <div className="flex gap-4 text-xs bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                  <span className="text-slate-600">
-                    Total: <strong className="text-slate-900">{testResults.totalTests}</strong>
-                  </span>
-                  <span className="text-emerald-700">
-                    Passed: <strong>{testResults.passedTests}</strong>
-                  </span>
-                  <span className="text-red-700">
-                    Failed: <strong>{testResults.failedTests}</strong>
-                  </span>
-                </div>
-
-                <div className="space-y-2">
-                  {testResults.tests.map((test: any, idx: number) => (
-                    <div
-                      key={idx}
-                      className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs flex items-start justify-between gap-3"
+            {providers.length ? (
+              <div className="space-y-3">
+                {providers.map((p) => (
+                  <div
+                    key={p.id}
+                    className="ui-data-row border-b border-default pb-3 text-xs"
+                  >
+                    <span>
+                      {p.id}
+                      <small className="block text-muted mt-1">
+                        {p.defaultModel}
+                      </small>
+                    </span>
+                    <span
+                      className={
+                        p.status === "online" ? "text-success" : "text-warning"
+                      }
                     >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-100 px-2.5 py-0.5 rounded-full">
-                            {test.suiteName}
-                          </span>
-                          <span className="font-semibold text-slate-900">{test.testName}</span>
-                        </div>
-                        {test.message && (
-                          <div className="text-[11px] text-slate-500 font-mono">
-                            {test.message}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[11px] text-slate-400 font-mono">{test.durationMs}ms</span>
-                        {test.passed ? (
-                          <span className="flex items-center gap-1 text-emerald-700 font-bold bg-emerald-100 px-2.5 py-0.5 rounded-full text-[11px]">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> PASS
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1 text-red-700 font-bold bg-red-100 px-2.5 py-0.5 rounded-full text-[11px]">
-                            <XCircle className="w-3.5 h-3.5" /> FAIL
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* SUB-TAB 2: RAG BENCHMARK */}
-      {activeSubTab === 'benchmark' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-8 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">Empirical Academic Benchmark</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Calculates Recall@1, Recall@3, and citation accuracy on academic MCA curriculum items.
-                </p>
-              </div>
-
-              <button
-                onClick={runBenchmark}
-                disabled={runningBenchmark}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-full text-xs font-semibold flex items-center gap-1.5 transition shadow-xs"
-              >
-                <Play className="w-3.5 h-3.5" />
-                {runningBenchmark ? 'Evaluating...' : 'Re-Run Benchmark'}
-              </button>
-            </div>
-
-            {benchmarkData && (
-              <div className="space-y-5">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                    <div className="text-xs text-slate-500 font-semibold">Recall @ 1</div>
-                    <div className="text-2xl font-bold text-blue-700 mt-1">
-                      {benchmarkData.metrics.recallAt1}%
-                    </div>
-                  </div>
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                    <div className="text-xs text-slate-500 font-semibold">Recall @ 3</div>
-                    <div className="text-2xl font-bold text-emerald-700 mt-1">
-                      {benchmarkData.metrics.recallAt3}%
-                    </div>
-                  </div>
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                    <div className="text-xs text-slate-500 font-semibold">Citation Accuracy</div>
-                    <div className="text-2xl font-bold text-indigo-700 mt-1">
-                      {benchmarkData.metrics.citationAccuracyRate}%
-                    </div>
-                  </div>
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                    <div className="text-xs text-slate-500 font-semibold">Faithfulness Rate</div>
-                    <div className="text-2xl font-bold text-amber-700 mt-1">
-                      {benchmarkData.metrics.faithfulnessRate}%
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                    Evaluated Academic Test Items ({benchmarkData.evaluatedItems.length})
-                  </h4>
-
-                  {benchmarkData.evaluatedItems.map((item: any, i: number) => (
-                    <div
-                      key={i}
-                      className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs space-y-2"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <span className="font-semibold text-slate-900">{item.question}</span>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                              item.recall1Hit
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : 'bg-amber-100 text-amber-800'
-                            }`}
-                          >
-                            Recall@1: {item.recall1Hit ? 'HIT' : 'MISS'}
-                          </span>
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                              item.citationVerified
-                                ? 'bg-blue-100 text-blue-800'
-                                : 'bg-slate-200 text-slate-600'
-                            }`}
-                          >
-                            Citation: {item.citationVerified ? 'VERIFIED' : 'UNVERIFIED'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="text-[11px] text-slate-600 italic bg-white p-2.5 rounded-xl border border-slate-200">
-                        Top Retrieved: "{item.topChunkRetrieved}"
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* SUB-TAB 3: EXECUTION LOGS */}
-      {activeSubTab === 'logs' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-8 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">Execution Logs & Per-Model Latency</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Detailed request IDs, latency tracking, and error traces.
-                </p>
-              </div>
-
-              <button
-                onClick={fetchLogs}
-                disabled={loadingLogs}
-                className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full text-xs font-semibold transition"
-              >
-                Refresh Logs
-              </button>
-            </div>
-
-            {/* Provider Latency Cards */}
-            {stats && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
-                {(['gemini', 'groq'] as const).map((pid) => (
-                  <div key={pid} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs">
-                    <div className="flex items-center justify-between font-bold text-slate-900 mb-1.5 uppercase">
-                      <span>{pid === 'gemini' ? 'Google Gemini 3.8 Flash' : 'Groq Llama 3.3'}</span>
-                      <span className="text-blue-600 font-mono text-[11px]">
-                        {stats[pid].avgLatencyMs}ms avg
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-slate-500 space-y-0.5">
-                      <div>Total Calls: {stats[pid].totalRequests}</div>
-                      <div>Successes: {stats[pid].successfulRequests}</div>
-                      <div>Failures: {stats[pid].failedRequests}</div>
-                    </div>
+                      {p.status}
+                    </span>
                   </div>
                 ))}
               </div>
+            ) : (
+              <p className="text-xs text-muted">
+                Diagnostics have not been loaded.
+              </p>
             )}
-
-            {/* Table */}
-            <div className="overflow-x-auto">
+          </section>
+        </>
+      )}
+      {tab === "tests" && (
+        <section className="ui-panel">
+          <div className="ui-data-row mb-5">
+            <div>
+              <h2 className="text-base font-semibold">System unit tests</h2>
+              <p className="text-xs text-muted mt-2">
+                Backend checks of chunking, similarity, analytics and planning.
+              </p>
+            </div>
+            <button
+              className="ui-control ui-button"
+              disabled={busy.tests}
+              onClick={tests}
+            >
+              {busy.tests ? "Running tests…" : "Run unit tests"}
+            </button>
+          </div>
+          {!testResults ? (
+            <EmptyState
+              title="No test run in this session"
+              description="Run the backend checks to see actual pass and fail results."
+            />
+          ) : (
+            <>
+              <StatusMessage
+                tone={testResults.failedTests ? "error" : "success"}
+              >
+                {testResults.passedTests} passed · {testResults.failedTests}{" "}
+                failed · {testResults.totalTests} total
+              </StatusMessage>
+              <div className="space-y-3 mt-4">
+                {testResults.tests.map((t, i) => (
+                  <div key={i} className="border border-default rounded-lg p-4">
+                    <div className="ui-data-row text-sm">
+                      <h3>{t.testName}</h3>
+                      <span
+                        className={t.passed ? "text-success" : "text-danger"}
+                      >
+                        {t.passed ? "PASS" : "FAIL"} · {t.durationMs} ms
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted mt-2">
+                      {t.suiteName} · {t.message}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
+      )}
+      {tab === "benchmark" && (
+        <section className="ui-panel">
+          <div className="ui-data-row mb-5">
+            <h2 className="text-base font-semibold">Retrieval benchmark</h2>
+            <button
+              className="ui-control ui-button"
+              disabled={busy.benchmark}
+              onClick={benchmarkRun}
+            >
+              {busy.benchmark ? "Evaluating…" : "Run retrieval benchmark"}
+            </button>
+          </div>
+          <StatusMessage>
+            Answer faithfulness is not assessed by this retrieval benchmark.
+            Review generated answers against original sources.
+          </StatusMessage>
+          {!benchmark ? (
+            <div className="mt-4">
+              <EmptyState
+                title="No retrieval benchmark run"
+                description="Run the local benchmark to measure source retrieval against its reference items."
+              />
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 my-5">
+                {[
+                  ["Recall @ 1", benchmark.metrics.recallAt1],
+                  ["Recall @ 3", benchmark.metrics.recallAt3],
+                  [
+                    "Citation label match",
+                    benchmark.metrics.citationAccuracyRate,
+                  ],
+                ].map(([label, value]) => (
+                  <div
+                    className="bg-subtle border border-default rounded-xl p-4"
+                    key={label}
+                  >
+                    <h3 className="text-xs text-muted">{label}</h3>
+                    <p className="text-2xl mt-2">{value}%</p>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-3">
+                {benchmark.evaluatedItems.map((item, i) => (
+                  <div className="border border-default rounded-lg p-4" key={i}>
+                    <h3 className="text-sm font-medium">{item.question}</h3>
+                    <p className="text-xs text-muted my-2">
+                      Recall@1: {item.recall1Hit ? "HIT" : "MISS"} · Recall@3:{" "}
+                      {item.recall3Hit ? "HIT" : "MISS"} · Citation label:{" "}
+                      {item.citationVerified ? "MATCH" : "NO MATCH"}
+                    </p>
+                    <blockquote className="text-xs text-secondary leading-relaxed">
+                      {item.topChunkRetrieved}
+                    </blockquote>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
+      )}
+      {tab === "logs" && (
+        <section className="ui-panel">
+          <div className="ui-data-row mb-5">
+            <h2 className="text-base font-semibold">Provider execution logs</h2>
+            <button
+              className="ui-control ui-button"
+              disabled={busy.logs}
+              onClick={loadLogs}
+            >
+              {busy.logs ? "Loading logs…" : "Refresh Logs"}
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+            {Object.entries(stats).map(([id, stat]) => (
+              <div
+                className="bg-subtle border border-default rounded-xl p-4 text-xs"
+                key={id}
+              >
+                <h3 className="font-medium">{id}</h3>
+                <p className="text-muted mt-2">
+                  {stat.totalRequests} calls · {stat.successfulRequests}{" "}
+                  succeeded · {stat.failedRequests} failed
+                </p>
+                <p className="text-muted mt-1">
+                  {stat.totalRequests
+                    ? `${stat.avgLatencyMs} ms average`
+                    : "No requests recorded"}
+                </p>
+              </div>
+            ))}
+          </div>
+          {!logs.length ? (
+            <EmptyState
+              title={
+                busy.logs
+                  ? "Loading execution records…"
+                  : "No execution records"
+              }
+              description="Completed provider calls appear here when the backend records them."
+            />
+          ) : (
+            <div
+              role="region"
+              aria-label="Provider execution table"
+              tabIndex={0}
+              className="ui-table-scroll"
+            >
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 uppercase text-[10px]">
+                <caption className="sr-only">
+                  Provider execution records
+                </caption>
+                <thead className="bg-subtle text-muted">
                   <tr>
-                    <th className="py-2.5 px-3">Timestamp</th>
-                    <th className="py-2.5 px-3">Task</th>
-                    <th className="py-2.5 px-3">Provider</th>
-                    <th className="py-2.5 px-3">Model</th>
-                    <th className="py-2.5 px-3">Latency</th>
-                    <th className="py-2.5 px-3">Status</th>
+                    {[
+                      "Time",
+                      "Task",
+                      "Provider",
+                      "Model",
+                      "Latency",
+                      "Result",
+                    ].map((h) => (
+                      <th scope="col" className="p-3" key={h}>
+                        {h}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700 font-mono text-[11px]">
+                <tbody>
                   {logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-50 transition">
-                      <td className="py-2.5 px-3 text-slate-400 whitespace-nowrap">
+                    <tr key={log.id} className="border-t border-default">
+                      <td className="p-3 whitespace-nowrap">
                         {new Date(log.timestamp).toLocaleTimeString()}
                       </td>
-                      <td className="py-2.5 px-3 uppercase text-blue-600 font-semibold">{log.taskType}</td>
-                      <td className="py-2.5 px-3">{log.provider}</td>
-                      <td className="py-2.5 px-3">{log.model}</td>
-                      <td className="py-2.5 px-3 font-semibold text-slate-900">{log.latencyMs}ms</td>
-                      <td className="py-2.5 px-3">
-                        {log.success ? (
-                          <span className="text-emerald-600 font-bold">OK</span>
-                        ) : (
-                          <span className="text-red-600 font-bold" title={log.error}>
-                            ERR
-                          </span>
-                        )}
+                      <td className="p-3">{log.taskType}</td>
+                      <td className="p-3">{log.provider}</td>
+                      <td className="p-3 ui-word-wrap">{log.model}</td>
+                      <td className="p-3 whitespace-nowrap">
+                        {log.latencyMs} ms
+                      </td>
+                      <td
+                        className={`p-3 ${log.success ? "text-success" : "text-danger"}`}
+                      >
+                        {log.success ? "OK" : "ERROR"}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
+          )}
+        </section>
       )}
     </div>
   );
-};
+}

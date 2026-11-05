@@ -1,0 +1,128 @@
+[
+  {
+    "bottom": 652.1875,
+    "height": 1080,
+    "left": 750,
+    "right": 1170,
+    "theme": "dark",
+    "top": 427.796875,
+    "width": 1920
+  },
+  {
+    "bottom": 562.1875,
+    "height": 900,
+    "left": 510,
+    "right": 930,
+    "theme": "dark",
+    "top": 337.796875,
+    "width": 1440
+  },
+  {
+    "bottom": 496.1875,
+    "height": 768,
+    "left": 473,
+    "right": 893,
+    "theme": "dark",
+    "top": 271.796875,
+    "width": 1366
+  },
+  {
+    "bottom": 496.1875,
+    "height": 768,
+    "left": 302,
+    "right": 722,
+    "theme": "dark",
+    "top": 271.796875,
+    "width": 1024
+  },
+  {
+    "bottom": 624.1875,
+    "height": 1024,
+    "left": 174,
+    "right": 594,
+    "theme": "dark",
+    "top": 399.796875,
+    "width": 768
+  },
+  {
+    "bottom": 528.1875,
+    "height": 844,
+    "left": 16,
+    "right": 374,
+    "theme": "dark",
+    "top": 315.796875,
+    "width": 390
+  },
+  {
+    "bottom": 506.1875,
+    "height": 800,
+    "left": 16,
+    "right": 344,
+    "theme": "dark",
+    "top": 293.796875,
+    "width": 360
+  },
+  {
+    "bottom": 652.1875,
+    "height": 1080,
+    "left": 750,
+    "right": 1170,
+    "theme": "light",
+    "top": 427.796875,
+    "width": 1920
+  },
+  {
+    "bottom": 562.1875,
+    "height": 900,
+    "left": 510,
+    "right": 930,
+    "theme": "light",
+    "top": 337.796875,
+    "width": 1440
+  },
+  {
+    "bottom": 496.1875,
+    "height": 768,
+    "left": 473,
+    "right": 893,
+    "theme": "light",
+    "top": 271.796875,
+    "width": 1366
+  },
+  {
+    "bottom": 496.1875,
+    "height": 768,
+    "left": 302,
+    "right": 722,
+    "theme": "light",
+    "top": 271.796875,
+    "width": 1024
+  },
+  {
+    "bottom": 624.1875,
+    "height": 1024,
+    "left": 174,
+    "right": 594,
+    "theme": "light",
+    "top": 399.796875,
+    "width": 768
+  },
+  {
+    "bottom": 528.1875,
+    "height": 844,
+    "left": 16,
+    "right": 374,
+    "theme": "light",
+    "top": 315.796875,
+    "width": 390
+  },
+  {
+    "bottom": 506.1875,
+    "height": 800,
+    "left": 16,
+    "right": 344,
+    "theme": "light",
+    "top": 293.796875,
+    "width": 360
+  }
+]

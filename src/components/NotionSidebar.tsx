@@ -1,257 +1,503 @@
-import React from 'react';
+import { useOverlayFocus } from "../hooks/useOverlayFocus.js";
+import { useMediaQuery } from "../hooks/useMediaQuery.js";
+import React, { useState, useEffect, useRef } from "react";
 import {
-  BookOpen,
-  Database,
-  Layers,
-  Award,
-  TrendingUp,
-  GitCompare,
+  BrainCircuit,
+  Library,
+  Zap,
+  Target,
+  ChartNoAxesCombined,
+  CalendarDays,
+  Scale,
   ShieldCheck,
-  Calendar,
-  Terminal,
+  FlaskConical,
+  Home,
+  Settings2,
   Search,
-  Sparkles,
-  ChevronDown,
-  Flame,
-  User,
   PanelLeftClose,
   PanelLeft,
-  Github,
-  Zap,
-} from 'lucide-react';
-import { UserProfile } from '../types.js';
-import { PomodoroTimer } from './PomodoroTimer.js';
-
+  SquarePen,
+  ChevronDown,
+  Pencil,
+  Trash2,
+  Ellipsis,
+} from "lucide-react";
+import type { UserProfile } from "../types.js";
+import type { Conversation } from "../hooks/useConversations.js";
 export type NavTabId =
-  | 'tutor'
-  | 'documents'
-  | 'study'
-  | 'quiz'
-  | 'mastery'
-  | 'comparison'
-  | 'review'
-  | 'planner'
-  | 'evaluation';
-
-interface NotionSidebarProps {
+  | "tutor"
+  | "documents"
+  | "study"
+  | "quiz"
+  | "mastery"
+  | "comparison"
+  | "review"
+  | "planner"
+  | "evaluation";
+export const modules = [
+  {
+    id: "tutor",
+    label: "Academic AI Tutor",
+    icon: BrainCircuit,
+    group: "Learning workspace",
+  },
+  {
+    id: "documents",
+    label: "Course Notes & Vault",
+    icon: Library,
+    group: "Learning workspace",
+  },
+  {
+    id: "study",
+    label: "Active Recall & Cards",
+    icon: Zap,
+    group: "Study & revision",
+  },
+  {
+    id: "quiz",
+    label: "Adaptive Quizzer",
+    icon: Target,
+    group: "Study & revision",
+  },
+  {
+    id: "mastery",
+    label: "Topic Mastery & Radar",
+    icon: ChartNoAxesCombined,
+    group: "Intelligence & labs",
+  },
+  {
+    id: "planner",
+    label: "Exam Revision Planner",
+    icon: CalendarDays,
+    group: "Study & revision",
+  },
+  {
+    id: "comparison",
+    label: "Multi-Model Lab",
+    icon: Scale,
+    group: "Intelligence & labs",
+  },
+  {
+    id: "review",
+    label: "Fact-Check & Audit",
+    icon: ShieldCheck,
+    group: "Intelligence & labs",
+  },
+  {
+    id: "evaluation",
+    label: "MCA Viva & Evaluator Lab",
+    icon: FlaskConical,
+    group: "Intelligence & labs",
+  },
+] as const;
+interface Props {
   activeTab: NavTabId;
   onSelectTab: (tab: NavTabId) => void;
   isOpen: boolean;
   onToggle: () => void;
   currentUser: UserProfile;
   onOpenAuth: () => void;
-  onOpenSearch: () => void;
-  docsCount: number;
+  width: number;
+  onWidth: (width: number) => void;
+  conversations: Conversation[];
+  activeConversation: string;
+  onSelectConversation: (id: string) => void;
+  onNew: () => void;
+  onRename: (id: string, title: string) => void;
+  onDelete: (id: string) => void;
+  onSettings: () => void;
 }
-
-export const NotionSidebar: React.FC<NotionSidebarProps> = ({
-  activeTab,
-  onSelectTab,
-  isOpen,
-  onToggle,
-  currentUser,
-  onOpenAuth,
-  onOpenSearch,
-  docsCount,
-}) => {
-  const sections = [
-    {
-      title: 'Active Workspace',
-      items: [
-        { id: 'tutor' as NavTabId, label: 'Academic AI Tutor', emoji: '🧠', tag: 'RAG' },
-        { id: 'documents' as NavTabId, label: 'Course Notes & Vault', emoji: '📚', count: docsCount },
-        { id: 'study' as NavTabId, label: 'Active Recall & Cards', emoji: '⚡', tag: 'Fast' },
-        { id: 'quiz' as NavTabId, label: 'Adaptive Quizzer', emoji: '🎯' },
-      ],
-    },
-    {
-      title: 'Academic Intelligence',
-      items: [
-        { id: 'mastery' as NavTabId, label: 'Topic Mastery & Radar', emoji: '📊' },
-        { id: 'planner' as NavTabId, label: 'Exam Revision Planner', emoji: '🗓️' },
-        { id: 'comparison' as NavTabId, label: 'Multi-Model Lab', emoji: '⚖️', tag: 'Compare' },
-        { id: 'review' as NavTabId, label: 'Fact-Check & Audit', emoji: '🛡️' },
-      ],
-    },
-    {
-      title: 'Evaluation & Viva',
-      items: [
-        { id: 'evaluation' as NavTabId, label: 'MCA Viva & Evaluator Lab', emoji: '🧪', tag: 'Examiner' },
-      ],
-    },
-  ];
-
-  if (!isOpen) {
-    return (
-      <aside className="hidden md:flex flex-col items-center py-3 w-12 border-r border-[#e9e9e7] dark:border-[#2f2f2f] bg-[#f7f6f3] dark:bg-[#1f1f1f] shrink-0 select-none">
-        <button
-          onClick={onToggle}
-          className="p-2 rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-[#787774] hover:text-[#37352f] dark:hover:text-white mb-4"
-          title="Open Notion Sidebar"
-        >
-          <PanelLeft className="w-4 h-4" />
-        </button>
-        <div className="flex-1 flex flex-col items-center gap-2">
-          {sections.flatMap((s) => s.items).map((item) => (
-            <button
-              key={item.id}
-              onClick={() => onSelectTab(item.id)}
-              title={item.label}
-              className={`w-8 h-8 rounded-md flex items-center justify-center text-sm transition ${
-                activeTab === item.id
-                  ? 'bg-white dark:bg-[#2c2c2c] shadow-2xs text-[#2383e2] border border-[#e9e9e7] dark:border-[#3a3a3a]'
-                  : 'hover:bg-black/5 dark:hover:bg-white/5 text-[#787774]'
-              }`}
-            >
-              {item.emoji}
-            </button>
-          ))}
-        </div>
-        <button
-          onClick={onOpenAuth}
-          className="w-7 h-7 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center"
-          title={currentUser.name}
-        >
-          {currentUser.name.charAt(0)}
-        </button>
-      </aside>
-    );
-  }
-
-  return (
-    <aside className="w-64 border-r border-[#e9e9e7] dark:border-[#2f2f2f] bg-[#f7f6f3] dark:bg-[#202020] flex flex-col h-screen sticky top-0 shrink-0 select-none z-30 transition-all duration-200">
-      {/* Workspace Switcher Header */}
-      <div className="p-3 border-b border-[#e9e9e7] dark:border-[#2b2b2b] flex items-center justify-between">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-7 h-7 rounded-md bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs shrink-0">
-            🧠
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-1">
-              <span className="text-xs font-bold text-[#37352f] dark:text-white truncate">
-                Cognify Studio
-              </span>
-              <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200">
-                MCA
-              </span>
-            </div>
-            <p className="text-[11px] text-[#787774] dark:text-[#9b9a97] truncate">
-              {currentUser.name}
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={onToggle}
-          className="p-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-[#787774] hover:text-[#37352f] dark:hover:text-white"
-          title="Collapse Sidebar"
-        >
-          <PanelLeftClose className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Quick Search & Streak Banner */}
-      <div className="p-2 space-y-1.5">
-        <button
-          onClick={onOpenSearch}
-          className="w-full px-2.5 py-1.5 rounded-md bg-white dark:bg-[#252525] border border-[#e9e9e7] dark:border-[#333333] hover:border-[#2383e2] text-left flex items-center justify-between text-xs text-[#787774] dark:text-[#9b9a97] shadow-2xs group transition"
-        >
-          <div className="flex items-center gap-2">
-            <Search className="w-3.5 h-3.5 group-hover:text-[#2383e2] transition" />
-            <span className="group-hover:text-[#37352f] dark:group-hover:text-white">Quick Find...</span>
-          </div>
-          <kbd className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-black/5 dark:bg-white/5 border border-[#e9e9e7] dark:border-[#3a3a3a]">
-            ⌘K
-          </kbd>
-        </button>
-
-        {/* Study Streak Pill */}
-        <div className="px-2.5 py-1.5 rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 flex items-center justify-between text-[11px] text-amber-900 dark:text-amber-300">
-          <div className="flex items-center gap-1.5 font-medium">
-            <Flame className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 fill-amber-500 animate-pulse" />
-            <span>4-Day Study Streak</span>
-          </div>
-          <span className="font-mono text-[10px] font-bold">120m</span>
-        </div>
-      </div>
-
-      {/* Navigation Sections */}
-      <div className="flex-1 overflow-y-auto px-2 py-1 space-y-4">
-        {sections.map((section, sIdx) => (
-          <div key={sIdx} className="space-y-0.5">
-            <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#9b9a97] font-mono">
-              {section.title}
-            </div>
-            {section.items.map((item) => {
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => onSelectTab(item.id)}
-                  className={`w-full px-2.5 py-1.5 rounded-md text-xs font-medium flex items-center justify-between group transition ${
-                    isActive
-                      ? 'bg-white dark:bg-[#2c2c2c] text-[#37352f] dark:text-white shadow-2xs font-semibold'
-                      : 'text-[#5f5e5b] dark:text-[#9b9a97] hover:bg-black/5 dark:hover:bg-white/5 hover:text-[#37352f] dark:hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 truncate">
-                    <span className="text-sm shrink-0">{item.emoji}</span>
-                    <span className="truncate">{item.label}</span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {item.tag && (
-                      <span
-                        className={`text-[9px] px-1.5 py-0.2 rounded font-mono uppercase tracking-wider ${
-                          isActive
-                            ? 'bg-[#2383e2] text-white'
-                            : 'bg-black/5 dark:bg-white/5 text-[#787774] dark:text-[#9b9a97]'
-                        }`}
-                      >
-                        {item.tag}
-                      </span>
-                    )}
-                    {typeof item.count === 'number' && item.count > 0 && (
-                      <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-black/5 dark:bg-white/10 text-[#787774] dark:text-[#9b9a97]">
-                        {item.count}
-                      </span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        ))}
-
-        {/* Ambient Pomodoro Focus Box in Sidebar */}
-        <div className="pt-2">
-          <PomodoroTimer />
-        </div>
-      </div>
-
-      {/* User Profile & Account Footer */}
-      <div className="p-2 border-t border-[#e9e9e7] dark:border-[#2b2b2b] bg-[#f7f6f3] dark:bg-[#1d1d1d]">
-        <button
-          onClick={onOpenAuth}
-          className="w-full p-2 rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-left flex items-center justify-between transition group"
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
-              {currentUser.name.charAt(0)}
-            </div>
-            <div className="min-w-0">
-              <div className="text-xs font-semibold text-[#37352f] dark:text-white truncate">
-                {currentUser.name}
-              </div>
-              <div className="text-[10px] text-[#787774] dark:text-[#9b9a97] truncate font-mono">
-                {currentUser.role === 'evaluator' ? '🎓 Evaluator Mode' : `Student · ${currentUser.studentId || 'MCA'}`}
-              </div>
-            </div>
-          </div>
-          <span className="text-[10px] font-medium text-blue-600 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition">
-            Switch
-          </span>
-        </button>
-      </div>
-    </aside>
+export function NotionSidebar(p: Props) {
+  const [hiddenTooltip, setHiddenTooltip] = useState<string | null>(null);
+  const mobile = useMediaQuery("(max-width: 1023px)");
+  const drawerRef = useOverlayFocus<HTMLElement>(
+    mobile && p.isOpen,
+    p.onToggle,
   );
-};
+  const [search, setSearch] = useState("");
+  const searchInput = useRef<HTMLInputElement>(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [dialog, setDialog] = useState<{
+    conversation: Conversation;
+    action: "rename" | "delete";
+  } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menu, setMenu] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  useEffect(() => {
+    if (!menu) return;
+    const close = (e: PointerEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenu(null);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [menu]);
+  const closeDialog = () => {
+    const id = dialog?.conversation.id;
+    setDialog(null);
+    requestAnimationFrame(() => {
+      const target =
+        document.getElementById(`history-actions-${id}`) ||
+        document.querySelector<HTMLButtonElement>(".new-conversation");
+      target?.focus();
+    });
+  };
+  useEffect(() => {
+    if (searchOpen) searchInput.current?.focus();
+  }, [searchOpen]);
+  const initials = p.currentUser.name
+    .split(" ")
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("");
+  const recent = [...p.conversations]
+    .filter((c) => c.turns.length || c.draft)
+    .filter((c) => c.title.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+  return (
+    <>
+      <nav className="primary-rail" aria-label="Workspace areas">
+        {modules.map(({ id, icon: Icon, label }) => (
+          <button
+            key={id}
+            className="rail-module"
+            aria-label={label}
+            aria-describedby={`rail-tooltip-${id}`}
+            onMouseEnter={() => setHiddenTooltip(null)}
+            onFocus={() => setHiddenTooltip(null)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setHiddenTooltip(id);
+            }}
+            aria-current={p.activeTab === id ? "page" : undefined}
+            onClick={() => p.onSelectTab(id)}
+          >
+            {id === "tutor" ? <Home /> : <Icon />}
+            <span
+              id={`rail-tooltip-${id}`}
+              className={`rail-tooltip ${hiddenTooltip === id ? "dismissed" : ""}`}
+              role="tooltip"
+            >
+              {label}
+            </span>
+          </button>
+        ))}
+        <div className="rail-bottom">
+          <button
+            aria-label={p.isOpen ? "Collapse sidebar" : "Open sidebar"}
+            title={p.isOpen ? "Collapse sidebar" : "Open sidebar"}
+            aria-expanded={p.isOpen}
+            onClick={p.onToggle}
+          >
+            {p.isOpen ? <PanelLeftClose /> : <PanelLeft />}
+          </button>
+          <button
+            title="Model settings"
+            aria-label="Model settings"
+            onClick={p.onSettings}
+          >
+            <Settings2 />
+          </button>
+          <button
+            className="avatar"
+            title="Account"
+            aria-label="Account"
+            onClick={p.onOpenAuth}
+          >
+            {initials}
+          </button>
+        </div>
+      </nav>
+      <>
+        {p.isOpen && (
+          <button
+            className="sidebar-backdrop"
+            tabIndex={-1}
+            aria-label="Close navigation"
+            onClick={p.onToggle}
+          />
+        )}
+        <aside
+          hidden={!p.isOpen}
+          ref={drawerRef}
+          role={mobile && !dialog ? "dialog" : undefined}
+          aria-modal={mobile && !dialog ? true : undefined}
+          className="workspace-sidebar"
+          style={{ "--sidebar-width": `${p.width}px` } as React.CSSProperties}
+          aria-label="Conversations"
+          onKeyDown={(e) => {
+            if (!mobile && e.key === "Escape") p.onToggle();
+          }}
+        >
+          <div className="sidebar-heading">
+            <span>
+              Cognify <span className="muted">AI</span>
+            </span>
+            <button
+              className="icon-button"
+              title="Search conversations"
+              aria-label="Search conversations"
+              onClick={() => {
+                setSearchOpen(!searchOpen);
+                if (searchOpen) setSearch("");
+              }}
+            >
+              <Search size={16} />
+            </button>
+            <button
+              className="icon-button mobile-close"
+              title="Close navigation"
+              aria-label="Close navigation"
+              onClick={p.onToggle}
+            >
+              <PanelLeftClose size={16} />
+            </button>
+          </div>
+          <button className="new-conversation" onClick={p.onNew}>
+            <SquarePen size={16} />
+            New conversation<span className="shortcut">+</span>
+          </button>
+          <div className="sidebar-scroll">
+            <section className="recents">
+              <h2>
+                Recents <span title="Stored in this browser only">Local</span>
+              </h2>
+              <label className="history-search" hidden={!searchOpen}>
+                <Search size={13} />
+                <input
+                  ref={searchInput}
+                  aria-label="Search conversations"
+                  placeholder="Search conversations"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </label>
+              {!recent.length && (
+                <p className="empty-history">
+                  {search
+                    ? "No matching conversations."
+                    : "Your conversations will appear here."}
+                </p>
+              )}
+              {recent.slice(0, showAll ? undefined : 5).map((c) => (
+                <div
+                  key={c.id}
+                  className={`history-row ${p.activeTab === "tutor" && c.id === p.activeConversation ? "selected" : ""}`}
+                >
+                  <button
+                    onClick={() => p.onSelectConversation(c.id)}
+                    title={c.title}
+                  >
+                    <span>{c.title}</span>
+                  </button>
+                  <div
+                    ref={menu === c.id ? menuRef : undefined}
+                    className="history-actions"
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        e.stopPropagation();
+                        setMenu(null);
+                        document
+                          .getElementById(`history-actions-${c.id}`)
+                          ?.focus();
+                      }
+                    }}
+                  >
+                    <button
+                      id={`history-actions-${c.id}`}
+                      aria-label={`Actions for ${c.title}`}
+                      aria-expanded={menu === c.id}
+                      aria-haspopup="true"
+                      onClick={(e) => {
+                        const r = e.currentTarget.getBoundingClientRect();
+                        setMenuPosition({
+                          top: Math.min(r.bottom, window.innerHeight - 95),
+                          left: Math.max(8, r.right - 130),
+                        });
+                        setMenu(menu === c.id ? null : c.id);
+                      }}
+                    >
+                      <Ellipsis size={15} />
+                    </button>
+                    {menu === c.id && (
+                      <div
+                        className="history-menu"
+                        style={{
+                          position: "fixed",
+                          top: menuPosition.top,
+                          left: menuPosition.left,
+                          right: "auto",
+                        }}
+                      >
+                        <button
+                          onClick={() => {
+                            setDialog({ conversation: c, action: "rename" });
+                            setMenu(null);
+                          }}
+                        >
+                          <Pencil size={13} />
+                          Rename
+                        </button>
+                        <button
+                          onClick={() => {
+                            setDialog({ conversation: c, action: "delete" });
+                            setMenu(null);
+                          }}
+                        >
+                          <Trash2 size={13} />
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {recent.length > 5 && (
+                <button
+                  className="show-more"
+                  onClick={() => setShowAll(!showAll)}
+                >
+                  {showAll ? "Show less" : "Show more"}
+                </button>
+              )}
+            </section>
+          </div>
+          <button className="profile-row" onClick={p.onOpenAuth}>
+            <span className="avatar">{initials}</span>
+            <span>
+              <strong>{p.currentUser.name}</strong>
+              <small>{p.currentUser.studentId || p.currentUser.email}</small>
+            </span>
+            <ChevronDown size={14} />
+          </button>
+          <div
+            role="separator"
+            aria-label="Resize navigation"
+            aria-orientation="vertical"
+            aria-valuemin={220}
+            aria-valuemax={380}
+            aria-valuenow={p.width}
+            tabIndex={0}
+            className="sidebar-resize"
+            onKeyDown={(e) => {
+              if (e.key === "Home" || e.key === "End") {
+                e.preventDefault();
+                p.onWidth(e.key === "Home" ? 220 : 380);
+              }
+              if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+                e.preventDefault();
+                p.onWidth(
+                  Math.max(
+                    220,
+                    Math.min(
+                      380,
+                      p.width +
+                        (e.key === "ArrowRight" ? 1 : -1) *
+                          (e.shiftKey ? 10 : 1),
+                    ),
+                  ),
+                );
+              }
+            }}
+            onPointerDown={(e) => {
+              e.currentTarget.setPointerCapture(e.pointerId);
+              document.documentElement.style.userSelect = "none";
+            }}
+            onPointerMove={(e) => {
+              if (e.currentTarget.hasPointerCapture(e.pointerId))
+                p.onWidth(Math.max(220, Math.min(380, e.clientX - 52)));
+            }}
+            onLostPointerCapture={() => {
+              document.documentElement.style.userSelect = "";
+            }}
+            onPointerCancel={() => {
+              document.documentElement.style.userSelect = "";
+            }}
+            onPointerUp={(e) =>
+              e.currentTarget.releasePointerCapture(e.pointerId)
+            }
+          />
+        </aside>
+        {dialog && (
+          <ConversationDialog
+            conversation={dialog.conversation}
+            action={dialog.action}
+            onClose={closeDialog}
+            onSubmit={(title) => {
+              if (dialog.action === "rename")
+                p.onRename(dialog.conversation.id, title);
+              else p.onDelete(dialog.conversation.id);
+              setDialog(null);
+            }}
+          />
+        )}
+      </>
+    </>
+  );
+}
+function ConversationDialog({
+  conversation,
+  action,
+  onClose,
+  onSubmit,
+}: {
+  conversation: Conversation;
+  action: "rename" | "delete";
+  onClose: () => void;
+  onSubmit: (title: string) => void;
+}) {
+  const ref = useOverlayFocus<HTMLDivElement>(true, onClose);
+  const [title, setTitle] = useState(conversation.title);
+  return (
+    <div
+      className="ui-confirm-overlay"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        ref={ref}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="conversation-dialog-title"
+        className="ui-panel ui-confirm-panel"
+      >
+        <h2 id="conversation-dialog-title">
+          {action === "rename" ? "Rename conversation" : "Delete conversation?"}
+        </h2>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (title.trim()) onSubmit(title.trim());
+          }}
+        >
+          {action === "rename" ? (
+            <label className="conversation-title-field">
+              Conversation title
+              <input
+                className="ui-field"
+                value={title}
+                maxLength={120}
+                required
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </label>
+          ) : (
+            <p>
+              This removes �{conversation.title}� and its draft from this
+              browser. This cannot be undone.
+            </p>
+          )}
+          <div className="conversation-dialog-actions">
+            <button type="button" className="ui-button" onClick={onClose}>
+              Cancel
+            </button>
+            <button className="ui-button" disabled={!title.trim()}>
+              {action === "rename" ? "Save name" : "Delete conversation"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

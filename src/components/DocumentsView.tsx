@@ -1,285 +1,370 @@
-import React, { useState } from 'react';
-import { DocumentMeta } from '../types.js';
-import { Upload, FileText, Trash2, Plus, Sparkles, Database, Layers, CheckCircle, HardDrive } from 'lucide-react';
-
-interface DocumentsViewProps {
+import { apiJson } from "../lib/api.js";
+import React, { useMemo, useState } from "react";
+import { FileText, Library, Plus, Search, Trash2, Upload } from "lucide-react";
+import type { DocumentMeta } from "../types.js";
+import {
+  ConfirmDialog,
+  EmptyState,
+  PageHeading,
+  StatusMessage,
+} from "./ui/Primitives.js";
+interface Props {
   documents: DocumentMeta[];
   onRefresh: () => void;
   onSeedSample: () => void;
 }
-
-export const DocumentsView: React.FC<DocumentsViewProps> = ({
-  documents,
-  onRefresh,
-  onSeedSample,
-}) => {
-  const [activeTab, setActiveTab] = useState<'upload' | 'paste'>('upload');
-  const [pastedTitle, setPastedTitle] = useState('');
-  const [pastedText, setPastedText] = useState('');
-  const [uploading, setUploading] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+export function DocumentsView({ documents, onRefresh, onSeedSample }: Props) {
+  const [pendingDelete, setPendingDelete] = useState<DocumentMeta | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [tab, setTab] = useState<"upload" | "paste">("upload");
+  const [title, setTitle] = useState("");
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{
+    text: string;
+    tone: "error" | "success";
+  } | null>(null);
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("recent");
+  const filtered = useMemo(
+    () =>
+      documents
+        .filter((d) =>
+          `${d.title} ${d.fileName}`
+            .toLowerCase()
+            .includes(search.toLowerCase()),
+        )
+        .sort((a, b) =>
+          sort === "name"
+            ? a.title.localeCompare(b.title)
+            : Date.parse(b.uploadedAt) - Date.parse(a.uploadedAt),
+        ),
+    [documents, search, sort],
+  );
+  async function ingest(body: BodyInit, headers?: HeadersInit) {
+    setBusy(true);
+    setNotice(null);
+    try {
+      const data = await apiJson<{ chunksCreated: number }>(
+        headers ? "/api/documents/text" : "/api/documents/upload",
+        { method: "POST", body, headers },
+      );
+      setNotice({
+        tone: "success",
+        text: `Document indexed into ${data.chunksCreated} chunks.`,
+      });
+      setText("");
+      setTitle("");
+      onRefresh();
+    } catch (error) {
+      setNotice({
+        tone: "error",
+        text:
+          error instanceof Error &&
+          ["TimeoutError", "AbortError"].includes(error.name)
+            ? "Indexing timed out. Refresh the library before retrying; processing may have finished on the server."
+            : error instanceof Error
+              ? error.message
+              : "Unable to reach the document service. Please retry.",
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function upload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
     if (!file) return;
-
-    setUploading(true);
-    setStatusMessage(null);
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const res = await fetch('/api/documents/upload', {
-        method: 'POST',
-        body: formData,
+    if (!/\.(pdf|pptx|txt)$/i.test(file.name) || file.size > 25 * 1024 * 1024) {
+      setNotice({
+        tone: "error",
+        text: "Choose a PDF, PPTX or TXT file of 25 MB or smaller.",
       });
-
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error);
-
-      setStatusMessage(`Successfully extracted and indexed "${file.name}" into ${data.chunksCreated} chunks.`);
-      onRefresh();
-    } catch (err: any) {
-      setStatusMessage(`Ingestion failed: ${err.message}`);
-    } finally {
-      setUploading(false);
-      e.target.value = '';
+      return;
     }
-  };
-
-  const handlePastedSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!pastedText.trim()) return;
-
-    setUploading(true);
-    setStatusMessage(null);
-
+    const body = new FormData();
+    body.append("file", file);
+    await ingest(body);
+  }
+  async function remove(document: DocumentMeta) {
+    setDeleting(document.id);
+    setNotice(null);
     try {
-      const res = await fetch('/api/documents/text', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: pastedTitle.trim() || 'Academic Notes',
-          text: pastedText,
-          fileType: 'txt',
-        }),
+      await apiJson(`/api/documents/${encodeURIComponent(document.id)}`, {
+        method: "DELETE",
       });
-
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error);
-
-      setStatusMessage(`Indexed notes into ${data.chunksCreated} semantic chunks.`);
-      setPastedTitle('');
-      setPastedText('');
+      setNotice({ tone: "success", text: "Document removed." });
       onRefresh();
-    } catch (err: any) {
-      setStatusMessage(`Error: ${err.message}`);
+    } catch (error) {
+      setNotice({
+        tone: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Removal failed. Please retry.",
+      });
     } finally {
-      setUploading(false);
+      setDeleting(null);
+      setPendingDelete(null);
     }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to remove this document and its indexed vectors?')) return;
-    try {
-      await fetch(`/api/documents/${id}`, { method: 'DELETE' });
-      onRefresh();
-    } catch (err: any) {
-      alert(`Delete failed: ${err.message}`);
-    }
-  };
-
+  }
   return (
-    <div className="space-y-6">
-      {/* Google Drive Style Header Card */}
-      <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
-              <HardDrive className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-slate-900">
-                Course Materials Drive & Vector Index
-              </h2>
-              <p className="text-xs text-slate-500">
-                Upload syllabus, PDFs, and slide decks. Automatically parsed with preserved page/slide numbers for RAG.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
+    <div className="ui-page">
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Remove document?"
+        busy={!!deleting}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={() => {
+          if (pendingDelete) remove(pendingDelete);
+        }}
+      >
+        <p>
+          Remove “{pendingDelete?.title}” and its indexed chunks? This cannot be
+          undone.
+        </p>
+      </ConfirmDialog>
+      <div className="ui-module-header">
+        <PageHeading
+          icon={Library}
+          title="Course Notes & Vault"
+          description="Upload course documents or paste notes to build your searchable academic library."
+        />
+        <div className="flex flex-wrap gap-2">
+          <button
+            className="ui-control border border-default px-3 text-xs"
+            disabled={refreshing}
+            onClick={async () => {
+              setRefreshing(true);
+              try {
+                await onRefresh();
+              } finally {
+                setRefreshing(false);
+              }
+            }}
+          >
+            {refreshing ? "Refreshing…" : "Refresh library"}
+          </button>
+          <button className="ui-control ui-button" onClick={onSeedSample}>
+            Load sample notes
+          </button>
+        </div>
+      </div>
+      <section className="ui-panel" aria-label="Add course material">
+        <div className="ui-tabs mb-5" aria-label="Document input method">
+          {(["upload", "paste"] as const).map((id) => (
             <button
-              onClick={onSeedSample}
-              className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-full text-xs font-semibold flex items-center gap-1.5 transition border border-blue-200"
+              key={id}
+              type="button"
+              aria-pressed={tab === id}
+              className={`ui-control px-3 py-2 text-xs ${tab === id ? "bg-accent-soft text-accent" : "text-muted hover:bg-elevated"}`}
+              onClick={() => setTab(id)}
             >
-              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-              Seed MCA Lecture Notes
+              {id === "upload" ? "Upload document" : "Paste notes"}
             </button>
-          </div>
+          ))}
         </div>
-
-        {/* Tab switch */}
-        <div className="flex gap-2 border-b border-slate-100 pb-3 mb-4">
-          <button
-            onClick={() => setActiveTab('upload')}
-            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition ${
-              activeTab === 'upload'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            Upload File (PDF / PPTX / TXT)
-          </button>
-          <button
-            onClick={() => setActiveTab('paste')}
-            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition ${
-              activeTab === 'paste'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            Paste Lecture Notes / Syllabus
-          </button>
-        </div>
-
-        {statusMessage && (
-          <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs flex items-center gap-2">
-            <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>{statusMessage}</span>
-          </div>
-        )}
-
-        {activeTab === 'upload' ? (
-          <div className="border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-2xl p-8 text-center bg-slate-50/60 transition">
-            <div className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-slate-200 flex items-center justify-center mx-auto mb-3 text-blue-600">
-              <Upload className="w-6 h-6" />
-            </div>
-            <p className="text-sm font-semibold text-slate-800">
-              Choose a course document to index
+        {tab === "upload" ? (
+          <div className="ui-empty">
+            <Upload
+              size={24}
+              className="mx-auto mb-3 text-accent"
+              aria-hidden="true"
+            />
+            <h2>Add your course material</h2>
+            <p>
+              PDF, PPTX and TXT · up to 25 MB. Page and slide references are
+              retained when available.
             </p>
-            <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              Supports .pdf (page-aware), .pptx (slide-aware), and .txt. Documents are chunked into 600-character segments.
-            </p>
-            <label className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-full cursor-pointer transition shadow-xs">
-              <Plus className="w-4 h-4" />
-              <span>{uploading ? 'Processing & Indexing Chunks...' : 'Select File from Device'}</span>
+            <label className="ui-button relative cursor-pointer">
+              <Plus size={16} aria-hidden="true" />
+              {busy ? "Indexing document…" : "Choose a file"}
               <input
                 type="file"
                 accept=".pdf,.pptx,.txt"
-                onChange={handleFileUpload}
-                disabled={uploading}
-                className="hidden"
+                aria-label="Upload course document"
+                disabled={busy}
+                onChange={upload}
+                className="ui-field absolute inset-0 opacity-0 w-full h-full cursor-pointer"
               />
             </label>
           </div>
         ) : (
-          <form onSubmit={handlePastedSubmit} className="space-y-3">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (text.trim() && !busy)
+                ingest(
+                  JSON.stringify({
+                    title: title.trim() || "Academic Notes",
+                    text,
+                    fileType: "txt",
+                  }),
+                  { "Content-Type": "application/json" },
+                );
+            }}
+            className="space-y-4"
+          >
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label
+                htmlFor="document-title"
+                className="block text-xs text-secondary mb-2"
+              >
                 Document / Chapter Title
               </label>
               <input
-                type="text"
-                value={pastedTitle}
-                onChange={(e) => setPastedTitle(e.target.value)}
-                placeholder="e.g. MCA 401 — Advanced Database Architectures"
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                id="document-title"
+                className="ui-field w-full bg-subtle border border-default p-3 text-primary"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                maxLength={200}
+                placeholder="A name you can find later"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label
+                htmlFor="document-text"
+                className="block text-xs text-secondary mb-2"
+              >
                 Lecture Text / Course Excerpts
               </label>
               <textarea
+                id="document-text"
+                required
                 rows={6}
-                value={pastedText}
-                onChange={(e) => setPastedText(e.target.value)}
-                placeholder="Paste course syllabus, lecture transcript, or study notes here..."
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="ui-field w-full bg-subtle border border-default p-3 text-primary"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Paste your course notes here"
               />
             </div>
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                disabled={uploading || !pastedText.trim()}
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white text-xs font-semibold rounded-full transition shadow-xs"
-              >
-                {uploading ? 'Chunking & Indexing...' : 'Index Text Notes'}
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={busy || !text.trim()}
+              className="ui-control ui-button"
+            >
+              {busy ? "Indexing notes…" : "Index text notes"}
+            </button>
           </form>
         )}
-      </div>
-
-      {/* Uploaded Documents List */}
-      <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <Layers className="w-4 h-4 text-blue-600" />
-            <span>Indexed Course Files ({documents.length})</span>
-          </h3>
-          <span className="text-xs text-slate-500 font-medium">
-            Total Semantic Chunks:{' '}
-            <strong className="text-blue-600">
-              {documents.reduce((acc, d) => acc + d.totalChunks, 0)}
-            </strong>
+      </section>
+      {busy && (
+        <StatusMessage>
+          Processing your document. This may take a moment.
+        </StatusMessage>
+      )}
+      {notice && (
+        <StatusMessage tone={notice.tone}>{notice.text}</StatusMessage>
+      )}
+      <section className="ui-panel" aria-label="Indexed documents">
+        <div className="ui-data-row mb-4">
+          <h2 className="text-base font-semibold">
+            Your library <span className="text-muted">{documents.length}</span>
+          </h2>
+          <span className="text-xs text-muted">
+            {documents.reduce((n, d) => n + d.totalChunks, 0)} indexed chunks
           </span>
         </div>
-
-        {documents.length === 0 ? (
-          <div className="text-center py-10">
-            <FileText className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-            <p className="text-xs text-slate-500">
-              No course documents indexed. Click "Seed MCA Lecture Notes" above to load standard materials immediately.
-            </p>
-          </div>
+        <div className="ui-data-row mb-5">
+          <label className="flex items-center gap-2 border border-default bg-subtle rounded-lg px-3 flex-1">
+            <Search size={15} aria-hidden="true" />
+            <input
+              className="ui-field bg-transparent py-2 w-full"
+              aria-label="Search documents"
+              placeholder="Search titles and filenames"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </label>
+          <select
+            className="ui-field border border-default bg-subtle p-2"
+            aria-label="Sort documents"
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+          >
+            <option value="recent">Recently added</option>
+            <option value="name">Title A–Z</option>
+          </select>
+        </div>
+        {!filtered.length ? (
+          <EmptyState
+            title={
+              search
+                ? "No matching documents"
+                : "Your library is ready for notes"
+            }
+            description={
+              search
+                ? "Try a different title or filename."
+                : "Upload a document, paste notes or load the sample materials to get started."
+            }
+          />
         ) : (
-          <div className="overflow-x-auto">
+          <div
+            role="region"
+            aria-label="Course document table"
+            tabIndex={0}
+            className="ui-table-scroll"
+          >
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] border-b border-slate-200">
+              <caption className="sr-only">Indexed course files</caption>
+              <thead className="bg-subtle text-muted">
                 <tr>
-                  <th className="py-3 px-4 font-semibold">Title</th>
-                  <th className="py-3 px-3 font-semibold">Format</th>
-                  <th className="py-3 px-3 font-semibold">Pages / Slides</th>
-                  <th className="py-3 px-3 font-semibold">Chunks</th>
-                  <th className="py-3 px-3 font-semibold">File Size</th>
-                  <th className="py-3 px-3 font-semibold">Added</th>
-                  <th className="py-3 px-4 font-semibold text-right">Action</th>
+                  {[
+                    "Document",
+                    "Format",
+                    "Pages / slides",
+                    "Chunks",
+                    "Size",
+                    "Added",
+                    "Actions",
+                  ].map((h) => (
+                    <th scope="col" className="p-3 font-medium" key={h}>
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
-                {documents.map((doc) => (
-                  <tr key={doc.id} className="hover:bg-slate-50/70 transition">
-                    <td className="py-3 px-4">
-                      <div className="font-semibold text-slate-900">{doc.title}</div>
-                      <div className="text-[11px] text-slate-400">{doc.fileName}</div>
+              <tbody>
+                {filtered.map((d) => (
+                  <tr key={d.id} className="border-t border-default">
+                    <td className="p-3 max-w-xs">
+                      <div className="flex items-center gap-2">
+                        <FileText
+                          size={15}
+                          className="text-accent shrink-0"
+                          aria-hidden="true"
+                        />
+                        <span className="font-medium ui-word-wrap">
+                          {d.title}
+                        </span>
+                      </div>
+                      <p className="text-muted mt-1 ui-word-wrap">
+                        {d.fileName}
+                      </p>
                     </td>
-                    <td className="py-3 px-3">
-                      <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold uppercase tracking-wider border border-blue-200">
-                        {doc.fileType}
-                      </span>
+                    <td className="p-3 uppercase text-muted">{d.fileType}</td>
+                    <td className="p-3">{d.pageOrSlideCount ?? "—"}</td>
+                    <td className="p-3">{d.totalChunks}</td>
+                    <td className="p-3 whitespace-nowrap">
+                      {(d.fileSizeBytes / 1024).toFixed(1)} KB
                     </td>
-                    <td className="py-3 px-3 text-slate-600 font-medium">
-                      {doc.pageOrSlideCount || 1}
+                    <td className="p-3 whitespace-nowrap">
+                      {new Date(d.uploadedAt).toLocaleDateString()}
                     </td>
-                    <td className="py-3 px-3 font-bold text-emerald-600">
-                      {doc.totalChunks}
-                    </td>
-                    <td className="py-3 px-3 text-slate-500">
-                      {(doc.fileSizeBytes / 1024).toFixed(1)} KB
-                    </td>
-                    <td className="py-3 px-3 text-slate-400">
-                      {new Date(doc.uploadedAt).toLocaleDateString()}
-                    </td>
-                    <td className="py-3 px-4 text-right">
+                    <td className="p-3">
                       <button
-                        onClick={() => handleDelete(doc.id)}
+                        aria-label={`Delete ${d.title}`}
                         title="Delete document"
-                        className="p-1.5 rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+                        disabled={!!deleting}
+                        onClick={() => setPendingDelete(d)}
+                        className="ui-control p-2 text-muted hover:text-danger hover:bg-danger-soft"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 size={16} />
+                        {deleting === d.id && (
+                          <span className="sr-only">Removing</span>
+                        )}
                       </button>
                     </td>
                   </tr>
@@ -288,7 +373,7 @@ export const DocumentsView: React.FC<DocumentsViewProps> = ({
             </table>
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
-};
+}

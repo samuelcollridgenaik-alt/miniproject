@@ -1,0 +1,156 @@
+[
+  {
+    "bottom": 810.140625,
+    "heading": "Cognify AI",
+    "height": 1080,
+    "left": 672,
+    "pageWidth": 1920,
+    "right": 1248,
+    "theme": "dark",
+    "top": 269.859375,
+    "width": 1920
+  },
+  {
+    "bottom": 720.140625,
+    "heading": "Cognify AI",
+    "height": 900,
+    "left": 432,
+    "pageWidth": 1440,
+    "right": 1008,
+    "theme": "dark",
+    "top": 179.859375,
+    "width": 1440
+  },
+  {
+    "bottom": 654.140625,
+    "heading": "Cognify AI",
+    "height": 768,
+    "left": 395,
+    "pageWidth": 1366,
+    "right": 971,
+    "theme": "dark",
+    "top": 113.859375,
+    "width": 1366
+  },
+  {
+    "bottom": 654.140625,
+    "heading": "Cognify AI",
+    "height": 768,
+    "left": 224,
+    "pageWidth": 1024,
+    "right": 800,
+    "theme": "dark",
+    "top": 113.859375,
+    "width": 1024
+  },
+  {
+    "bottom": 782.140625,
+    "heading": "Cognify AI",
+    "height": 1024,
+    "left": 96,
+    "pageWidth": 768,
+    "right": 672,
+    "theme": "dark",
+    "top": 241.859375,
+    "width": 768
+  },
+  {
+    "bottom": 759.09375,
+    "heading": "Cognify AI",
+    "height": 844,
+    "left": 16,
+    "pageWidth": 390,
+    "right": 374,
+    "theme": "dark",
+    "top": 84.90625,
+    "width": 390
+  },
+  {
+    "bottom": 745.09375,
+    "heading": "Cognify AI",
+    "height": 800,
+    "left": 16,
+    "pageWidth": 360,
+    "right": 344,
+    "theme": "dark",
+    "top": 54.90625,
+    "width": 360
+  },
+  {
+    "bottom": 810.140625,
+    "heading": "Cognify AI",
+    "height": 1080,
+    "left": 672,
+    "pageWidth": 1920,
+    "right": 1248,
+    "theme": "light",
+    "top": 269.859375,
+    "width": 1920
+  },
+  {
+    "bottom": 720.140625,
+    "heading": "Cognify AI",
+    "height": 900,
+    "left": 432,
+    "pageWidth": 1440,
+    "right": 1008,
+    "theme": "light",
+    "top": 179.859375,
+    "width": 1440
+  },
+  {
+    "bottom": 654.140625,
+    "heading": "Cognify AI",
+    "height": 768,
+    "left": 395,
+    "pageWidth": 1366,
+    "right": 971,
+    "theme": "light",
+    "top": 113.859375,
+    "width": 1366
+  },
+  {
+    "bottom": 654.140625,
+    "heading": "Cognify AI",
+    "height": 768,
+    "left": 224,
+    "pageWidth": 1024,
+    "right": 800,
+    "theme": "light",
+    "top": 113.859375,
+    "width": 1024
+  },
+  {
+    "bottom": 782.140625,
+    "heading": "Cognify AI",
+    "height": 1024,
+    "left": 96,
+    "pageWidth": 768,
+    "right": 672,
+    "theme": "light",
+    "top": 241.859375,
+    "width": 768
+  },
+  {
+    "bottom": 759.09375,
+    "heading": "Cognify AI",
+    "height": 844,
+    "left": 16,
+    "pageWidth": 390,
+    "right": 374,
+    "theme": "light",
+    "top": 84.90625,
+    "width": 390
+  },
+  {
+    "bottom": 745.09375,
+    "heading": "Cognify AI",
+    "height": 800,
+    "left": 16,
+    "pageWidth": 360,
+    "right": 344,
+    "theme": "light",
+    "top": 54.90625,
+    "width": 360
+  }
+]

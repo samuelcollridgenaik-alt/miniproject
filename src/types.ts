@@ -1,4 +1,5 @@
-export type LLMProviderId = 'gemini' | 'gemini-lite' | 'groq' | 'cognify-curriculum';
+export type LLMProviderId =
+  "gemini" | "gemini-lite" | "groq" | "cognify-curriculum";
 
 export interface UserProfile {
   id: string;
@@ -9,7 +10,7 @@ export interface UserProfile {
   institution?: string;
   program?: string;
   semester?: string;
-  role: 'student' | 'evaluator' | 'faculty';
+  role: "student" | "evaluator" | "faculty";
   createdAt: string;
   hasGeminiKey?: boolean;
   geminiKeyMasked?: string;
@@ -25,7 +26,7 @@ export interface ProviderDiagnostic {
   family: string;
   defaultModel: string;
   isConfigured: boolean;
-  status: 'online' | 'offline' | 'unconfigured' | 'error';
+  status: "online" | "offline" | "unconfigured" | "error";
   lastPingMs?: number;
   lastError?: string;
   apiKeyPresent: boolean;
@@ -36,7 +37,7 @@ export interface DocumentMeta {
   id: string;
   title: string;
   fileName: string;
-  fileType: 'pdf' | 'pptx' | 'txt';
+  fileType: "pdf" | "pptx" | "txt";
   fileSizeBytes: number;
   uploadedAt: string;
   totalChunks: number;
@@ -74,7 +75,11 @@ export interface SummaryData {
   title: string;
   documentTitle: string;
   overview: string;
-  coreConcepts: Array<{ concept: string; explanation: string; citation: string }>;
+  coreConcepts: Array<{
+    concept: string;
+    explanation: string;
+    citation: string;
+  }>;
   formulasOrRules: string[];
   examFocusPoints: string[];
 }
@@ -82,11 +87,11 @@ export interface SummaryData {
 export interface QuizQuestionData {
   id: string;
   question: string;
-  options: { key: 'A' | 'B' | 'C' | 'D'; text: string }[];
-  correctAnswer: 'A' | 'B' | 'C' | 'D';
+  options: { key: "A" | "B" | "C" | "D"; text: string }[];
+  correctAnswer: "A" | "B" | "C" | "D";
   explanation: string;
   topicTag: string;
-  difficulty: 'easy' | 'medium' | 'hard';
+  difficulty: "easy" | "medium" | "hard";
   citation?: string;
 }
 
@@ -95,7 +100,7 @@ export interface TopicMasteryData {
   totalQuestions: number;
   correctAnswers: number;
   masteryPercentage: number;
-  classification: 'mastered' | 'moderate' | 'weak';
+  classification: "mastered" | "moderate" | "weak";
   recommendedAction: string;
 }
 
@@ -109,19 +114,24 @@ export interface QuizAttemptData {
   items: {
     questionId: string;
     topicTag: string;
-    selectedAnswer: 'A' | 'B' | 'C' | 'D';
-    correctAnswer: 'A' | 'B' | 'C' | 'D';
+    selectedAnswer: "A" | "B" | "C" | "D";
+    correctAnswer: "A" | "B" | "C" | "D";
     isCorrect: boolean;
   }[];
-  topicBreakdown: Record<string, { correct: number; total: number; percentage: number }>;
+  topicBreakdown: Record<
+    string,
+    { correct: number; total: number; percentage: number }
+  >;
 }
 
 export interface ContentAuditData {
+  /** False when the provider response cannot support an audit verdict. */
+  isAssessmentAvailable?: boolean;
   requestId: string;
   auditorProvider: LLMProviderId;
   auditorModel: string;
   latencyMs: number;
-  verdict: 'PASS' | 'FLAGGED' | 'FAIL';
+  verdict: "PASS" | "FLAGGED" | "FAIL";
   consistencyScore: number;
   unsupportedClaims: string[];
   factualDiscrepancies: string[];
@@ -167,7 +177,11 @@ export interface StudyPlanData {
       currentMastery: number;
       targetMastery: number;
       allocatedMinutes: number;
-      activityType: 'conceptual_revision' | 'practice_problems' | 'flashcard_drill' | 'mock_quiz';
+      activityType:
+        | "conceptual_revision"
+        | "practice_problems"
+        | "flashcard_drill"
+        | "mock_quiz";
       sourceDocuments: string[];
     }[];
     reviewMilestone?: string;

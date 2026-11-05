@@ -1,142 +1,186 @@
-import React from 'react';
+import React, { useEffect, useState, useRef } from "react";
 import {
-  PanelLeft,
+  MessageCircle,
+  Plus,
+  X,
+  Search,
+  Settings2,
   Sun,
   Moon,
-  Github,
-  Sparkles,
-  Search,
-  CheckCircle2,
-  AlertCircle,
-  Zap,
-} from 'lucide-react';
-import { ProviderDiagnostic, UserProfile } from '../types.js';
-import { NavTabId } from './NotionSidebar.js';
-import { PomodoroTimer } from './PomodoroTimer.js';
-import { Settings2 } from 'lucide-react';
-
-interface NotionTopbarProps {
+} from "lucide-react";
+import type { Conversation } from "../hooks/useConversations.js";
+import { modules, type NavTabId } from "./NotionSidebar.js";
+import { PomodoroTimer } from "./PomodoroTimer.js";
+import type { ProviderDiagnostic } from "../types.js";
+interface Props {
+  providers: ProviderDiagnostic[];
   activeTab: NavTabId;
-  onToggleSidebar: () => void;
-  isSidebarOpen: boolean;
-  theme: 'light' | 'dark';
+  conversations: Conversation[];
+  open: string[];
+  active: string;
+  onSelect: (id: string) => void;
+  onClose: (id: string) => void;
+  onNew: () => void;
+  theme: "light" | "dark";
   onToggleTheme: () => void;
   onOpenSearch: () => void;
-  onSelectTab: (tab: NavTabId) => void;
-  providers: ProviderDiagnostic[];
-  totalDocs: number;
-  onOpenModelSettings?: () => void;
+  onSettings: () => void;
 }
-
-export const NotionTopbar: React.FC<NotionTopbarProps> = ({
-  activeTab,
-  onToggleSidebar,
-  isSidebarOpen,
-  theme,
-  onToggleTheme,
-  onOpenSearch,
-  onSelectTab,
-  providers,
-  totalDocs,
-  onOpenModelSettings,
-}) => {
-  const tabNames: Record<NavTabId, { emoji: string; title: string }> = {
-    tutor: { emoji: '🧠', title: 'Academic AI Tutor' },
-    documents: { emoji: '📚', title: 'Course Notes & Vault' },
-    study: { emoji: '⚡', title: 'Active Recall & Flashcards' },
-    quiz: { emoji: '🎯', title: 'Adaptive Quizzer' },
-    mastery: { emoji: '📊', title: 'Topic Mastery Analytics' },
-    planner: { emoji: '🗓️', title: 'Revision & Exam Planner' },
-    comparison: { emoji: '⚖️', title: 'Multi-Model Lab' },
-    review: { emoji: '🛡️', title: 'Fact-Check & Audit' },
-    evaluation: { emoji: '🧪', title: 'MCA Viva & Evaluator Lab' },
-  };
-
-  const current = tabNames[activeTab] || { emoji: '📄', title: 'Workspace' };
-  const geminiProvider = providers.find((p) => p.id === 'gemini');
-  const geminiLiteProvider = providers.find((p) => p.id === 'gemini-lite');
-  const isGeminiOnline = geminiProvider?.status === 'online' || geminiLiteProvider?.status === 'online';
-
+export function NotionTopbar(p: Props) {
+  const [controls, setControls] = useState(false);
+  const controlRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!controls) return;
+    const outside = (e: PointerEvent) => {
+      if (!controlRef.current?.contains(e.target as Node)) setControls(false);
+    };
+    document.addEventListener("pointerdown", outside);
+    return () => document.removeEventListener("pointerdown", outside);
+  }, [controls]);
+  useEffect(() => {
+    const revealActive = () => {
+      if (p.activeTab === "tutor")
+        document
+          .getElementById(`tab-${p.active}`)
+          ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+      else document.querySelector(".conversation-tabs")?.scrollTo({ left: 0 });
+    };
+    revealActive();
+    window.addEventListener("resize", revealActive);
+    return () => window.removeEventListener("resize", revealActive);
+  }, [p.active, p.activeTab]);
+  const opened = p.open
+    .map((id) => p.conversations.find((c) => c.id === id)!)
+    .filter(Boolean);
   return (
-    <header className="h-12 border-b border-[#e9e9e7] dark:border-[#2f2f2f] bg-white/80 dark:bg-[#191919]/80 backdrop-blur-md sticky top-0 z-20 flex items-center justify-between px-3 md:px-4 select-none">
-      {/* Left: Breadcrumbs & Sidebar Toggle */}
-      <div className="flex items-center gap-2 min-w-0">
-        {!isSidebarOpen && (
-          <button
-            onClick={onToggleSidebar}
-            className="p-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-[#787774] hover:text-[#37352f] dark:hover:text-white transition"
-            title="Open Sidebar"
-          >
-            <PanelLeft className="w-4 h-4" />
-          </button>
-        )}
-
-        <div className="flex items-center gap-1.5 text-xs text-[#787774] dark:text-[#9b9a97] truncate">
-          <span className="hidden sm:inline hover:underline cursor-pointer" onClick={() => onSelectTab('tutor')}>
-            Cognify Workspace
+    <header className="workspace-topbar">
+      <div
+        className="conversation-tabs"
+        role="tablist"
+        aria-label="Open conversations"
+        onKeyDown={(e) => {
+          const index = opened.findIndex((c) => c.id === p.active);
+          const next =
+            e.key === "ArrowRight"
+              ? (index + 1) % opened.length
+              : e.key === "ArrowLeft"
+                ? (index - 1 + opened.length) % opened.length
+                : e.key === "Home"
+                  ? 0
+                  : e.key === "End"
+                    ? opened.length - 1
+                    : -1;
+          if (next >= 0) {
+            e.preventDefault();
+            p.onSelect(opened[next].id);
+            document.getElementById(`tab-${opened[next].id}`)?.focus();
+          }
+        }}
+      >
+        {p.activeTab !== "tutor" && (
+          <span className="module-tab">
+            {modules.find((m) => m.id === p.activeTab)?.label}
           </span>
-          <span className="hidden sm:inline">/</span>
-          <span className="hidden md:inline font-mono text-[11px]">MCA-IV</span>
-          <span className="hidden md:inline">/</span>
-          <div className="flex items-center gap-1 font-semibold text-[#37352f] dark:text-white truncate">
-            <span>{current.emoji}</span>
-            <span className="truncate">{current.title}</span>
+        )}
+        {opened.map((c) => (
+          <div
+            className={`conversation-tab ${p.activeTab === "tutor" && p.active === c.id ? "active" : ""}`}
+            key={c.id}
+          >
+            <button
+              id={`tab-${c.id}`}
+              role="tab"
+              aria-selected={p.activeTab === "tutor" && p.active === c.id}
+              aria-controls="conversation-panel"
+              tabIndex={c.id === p.active ? 0 : -1}
+              onClick={() => p.onSelect(c.id)}
+              title={c.title}
+            >
+              <MessageCircle size={14} />
+              <span>
+                {c.title}
+                {c.draft ? " •" : ""}
+              </span>
+            </button>
+            <button
+              aria-label={`Close tab ${c.title}`}
+              title="Close tab (keeps history and draft)"
+              onClick={() => p.onClose(c.id)}
+            >
+              <X size={12} />
+            </button>
+          </div>
+        ))}
+      </div>
+      <button
+        className="icon-button"
+        title="New conversation"
+        aria-label="New conversation"
+        onClick={p.onNew}
+      >
+        <Plus size={17} />
+      </button>
+      <div className="topbar-tools">
+        <button
+          className="icon-button"
+          title="Search modules (Ctrl+K)"
+          aria-label="Search modules"
+          onClick={p.onOpenSearch}
+        >
+          <Search size={16} />
+        </button>
+        <div
+          ref={controlRef}
+          className="workspace-controls"
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setControls(false);
+              controlRef.current
+                ?.querySelector<HTMLButtonElement>("button")
+                ?.focus();
+            }
+          }}
+        >
+          <button
+            className="icon-button"
+            aria-expanded={controls}
+            title="Workspace controls"
+            aria-label="Workspace controls"
+            onClick={() => setControls(!controls)}
+          >
+            <Settings2 size={16} />
+          </button>
+          <div className="workspace-controls-panel" hidden={!controls}>
+            <strong>Workspace controls</strong>
+            <div className="provider-status">
+              {p.providers.map((provider) => (
+                <p key={provider.id}>
+                  {provider.name}
+                  <span>{provider.status}</span>
+                </p>
+              ))}
+            </div>
+            <button
+              className="new-conversation"
+              onClick={() => {
+                setControls(false);
+                p.onSettings();
+              }}
+            >
+              Model settings
+            </button>
+            <PomodoroTimer compact />
           </div>
         </div>
-      </div>
-
-      {/* Center: Live Engine Status (Clickable to open Model Settings) */}
-      <button
-        type="button"
-        onClick={onOpenModelSettings}
-        className="hidden lg:flex items-center gap-2 text-xs text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-white p-1 rounded-lg transition"
-        title="Configure AI Models & API Keys"
-      >
-        <span className="flex items-center gap-1.5 font-medium text-indigo-600 dark:text-indigo-400">
-          <span className={`w-2 h-2 rounded-full ${isGeminiOnline ? 'bg-emerald-500 animate-pulse' : 'bg-indigo-400'}`} />
-          <span>{isGeminiOnline ? 'Google Gemini AI' : 'Cognify Curriculum'}</span>
-        </span>
-        <span aria-hidden="true" className="text-slate-300 dark:text-zinc-700">·</span>
-        <span className="text-[11px] text-slate-600 dark:text-zinc-400">Grounded RAG</span>
-        <span aria-hidden="true" className="text-slate-300 dark:text-zinc-700">·</span>
-        <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400">Free Tier</span>
-        <Settings2 className="w-3 h-3 text-slate-400 hover:text-indigo-500" />
-      </button>
-
-      {/* Right Controls: Pomodoro, Theme, Search, Model Settings */}
-      <div className="flex items-center gap-1.5 sm:gap-2">
-        {/* Compact Pomodoro in topbar */}
-        <div className="hidden sm:block">
-          <PomodoroTimer compact={true} />
-        </div>
-
-        {/* Model Settings Button */}
         <button
-          onClick={onOpenModelSettings}
-          className="p-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-[#787774] hover:text-[#37352f] dark:hover:text-white transition"
-          title="AI Model & Key Settings"
+          className="icon-button"
+          title="Toggle theme"
+          aria-label="Toggle theme"
+          onClick={p.onToggleTheme}
         >
-          <Settings2 className="w-4 h-4" />
-        </button>
-
-        {/* Quick Search trigger */}
-        <button
-          onClick={onOpenSearch}
-          className="p-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-[#787774] hover:text-[#37352f] dark:hover:text-white transition"
-          title="Search or jump to page (⌘K)"
-        >
-          <Search className="w-4 h-4" />
-        </button>
-
-        {/* Theme Toggle */}
-        <button
-          onClick={onToggleTheme}
-          className="p-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-[#787774] hover:text-[#37352f] dark:hover:text-white transition"
-          title={theme === 'dark' ? 'Switch to Light Notion Theme' : 'Switch to Dark Notion Theme'}
-        >
-          {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
+          {p.theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
         </button>
       </div>
     </header>
   );
-};
+}

@@ -1,0 +1,156 @@
+[
+  {
+    "state": "tutor",
+    "page": "Academic AI Tutor",
+    "purpose": "Conversation, responses, composer, drafts, course and mode selectors",
+    "layout": "Workspace / TutorView",
+    "sharedComponents": "Rail, sidebar, tabs, Markdown renderer",
+    "uiIssues": "Shell regressions, scrolling and error recovery",
+    "functionalRisks": "RAG API, saved local history",
+    "priority": "High",
+    "status": "Verified: default layout; existing history/rendering and unit coverage"
+  },
+  {
+    "state": "documents",
+    "page": "Course Notes & Vault",
+    "purpose": "Upload, paste, search, sorting, table, removal confirmation",
+    "layout": "Workspace / DocumentsView",
+    "sharedComponents": "PageHeading, StatusMessage, EmptyState, ConfirmDialog",
+    "uiIssues": "Dark text, green errors, inaccessible file input, unchecked deletion",
+    "functionalRisks": "Ingestion and indexed vectors",
+    "priority": "High",
+    "status": "Verified: TXT upload, paste indexing, search, confirmation cancellation, fixture cleanup"
+  },
+  {
+    "state": "study",
+    "page": "Active Recall & Cards",
+    "purpose": "Bundled cards, generated cards, front/back, rating, digest",
+    "layout": "Workspace / StudyMaterialView",
+    "sharedComponents": "PageHeading, shared controls and statuses",
+    "uiIssues": "Global shortcuts consumed typing; false future-review claims",
+    "functionalRisks": "Study generation APIs and existing cards",
+    "priority": "High",
+    "status": "Verified: keyboard flip, protected typing, digest; generator inspected"
+  },
+  {
+    "state": "quiz",
+    "page": "Adaptive Quizzer",
+    "purpose": "Setup, presets, generation, radio choices, submit and local/persisted results",
+    "layout": "Workspace / QuizView",
+    "sharedComponents": "PageHeading, LoadingState, StatusMessage",
+    "uiIssues": "Unanswered A fallback; local results claimed saved; inaccessible choices",
+    "functionalRisks": "Assessment attempts and mastery recording",
+    "priority": "High",
+    "status": "Verified: presets, radio arrows, incomplete validation; persistence not submitted from browser"
+  },
+  {
+    "state": "mastery",
+    "page": "Topic Mastery & Radar",
+    "purpose": "KPI cards, topic progress, weak topics, loading/empty/error",
+    "layout": "Workspace / MasteryView",
+    "sharedComponents": "PageHeading, LoadingState, StatusMessage",
+    "uiIssues": "Silent fetch errors and unreadable dark text",
+    "functionalRisks": "Recorded assessment metrics",
+    "priority": "High",
+    "status": "Verified: actual empty analytics and layout; populated state inspected"
+  },
+  {
+    "state": "planner",
+    "page": "Exam Revision Planner",
+    "purpose": "Date/capacity/focus form, feasibility and daily schedule",
+    "layout": "Workspace / StudyPlannerView",
+    "sharedComponents": "PageHeading and semantic controls",
+    "uiIssues": "Date shifted to previous day, hours rounded incorrectly, short budgets exceeded",
+    "functionalRisks": "Calendar dates, stored plans and allocations",
+    "priority": "High",
+    "status": "Verified: invalid capacity, real schedules, first date and fractional hours"
+  },
+  {
+    "state": "comparison",
+    "page": "Multi-Model Lab",
+    "purpose": "Prompt, course filter, concurrent outputs/errors and provider metrics",
+    "layout": "Workspace / ComparisonView",
+    "sharedComponents": "PageHeading, LoadingState and shared controls",
+    "uiIssues": "Overlapping mobile input, invented provider titles, unmeasured latency",
+    "functionalRisks": "Provider configuration and comparison contract",
+    "priority": "High",
+    "status": "Verified: unconfigured providers; successful live responses unavailable"
+  },
+  {
+    "state": "review",
+    "page": "Fact-Check & Audit",
+    "purpose": "Content/source/type form, findings, unavailable audit and errors",
+    "layout": "Workspace / ReviewView",
+    "sharedComponents": "PageHeading, StatusMessage",
+    "uiIssues": "Invalid model JSON became fabricated PASS; overstated certainty",
+    "functionalRisks": "Source comparison and typed response contract",
+    "priority": "High",
+    "status": "Verified: unavailable assessment; structured results covered by parser tests"
+  },
+  {
+    "state": "evaluation",
+    "page": "MCA Viva & Evaluator Lab",
+    "purpose": "Rubric, unit tests, retrieval benchmark, execution logs",
+    "layout": "Workspace / EvaluationView",
+    "sharedComponents": "PageHeading, StatusMessage, EmptyState, shared table",
+    "uiIssues": "Static verified badges, hardcoded faithfulness, automatic costly reruns",
+    "functionalRisks": "Existing evaluation endpoints and execution data",
+    "priority": "High",
+    "status": "Verified: all four subviews, 5 backend tests, actual retrieval metrics and empty logs"
+  },
+  {
+    "state": "signed-out",
+    "page": "Standalone authentication",
+    "purpose": "Sign-in plus create/switch/keys states shared with account dialog",
+    "layout": "LoginPage outside Workspace",
+    "sharedComponents": "Overlay focus hook and shared controls",
+    "uiIssues": "Page clipping, missing labels, password default and heading hierarchy",
+    "functionalRisks": "Existing authentication service",
+    "priority": "High",
+    "status": "Verified: sign-out/demo restoration and sign-in layout; account subviews checked separately"
+  },
+  {
+    "state": "account",
+    "page": "Account dialog",
+    "purpose": "Sign in, registration, switch account, API key vault",
+    "layout": "LoginPage modal",
+    "sharedComponents": "useOverlayFocus, semantic surfaces",
+    "uiIssues": "Clipped header/body/footer, keyboard-inaccessible user selection",
+    "functionalRisks": "Account identity, credentials and session controls",
+    "priority": "High",
+    "status": "Verified: four subviews in two themes/seven widths; focus wrap; required fields"
+  },
+  {
+    "state": "model-settings",
+    "page": "Model settings dialog",
+    "purpose": "Provider draft selection, keys, validation and apply/cancel",
+    "layout": "ModelSettingsModal",
+    "sharedComponents": "useOverlayFocus and shared controls",
+    "uiIssues": "Cancel applied provider immediately; unsupported guarantees; stale drafts",
+    "functionalRisks": "Stored provider/key preferences",
+    "priority": "High",
+    "status": "Verified: layout, Escape, cancellation preserves selection; no real keys entered"
+  },
+  {
+    "state": "search",
+    "page": "Command palette",
+    "purpose": "Module search, keyboard navigation and tutor handoff",
+    "layout": "CommandPalette overlay",
+    "sharedComponents": "useOverlayFocus and shared controls",
+    "uiIssues": "Style mismatch and global flashcard key interference",
+    "functionalRisks": "Keyboard shortcuts and navigation",
+    "priority": "Medium",
+    "status": "Verified: layouts, spaces in input, keyboard navigation/escape"
+  },
+  {
+    "state": "document-confirmation",
+    "page": "Document removal dialog",
+    "purpose": "Explicit confirmation and cancellation",
+    "layout": "ConfirmDialog / DocumentsView",
+    "sharedComponents": "ConfirmDialog, useOverlayFocus, buttons",
+    "uiIssues": "Native confirmation impeded consistent keyboard/UI behavior",
+    "functionalRisks": "Avoid unintended removal",
+    "priority": "High",
+    "status": "Verified: open/cancel; affirmative endpoint used only to clean audit fixtures"
+  }
+]
