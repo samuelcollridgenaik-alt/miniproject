@@ -1,17 +1,22 @@
-import React, { useState } from 'react';
-import { ProviderDiagnostic } from '../types.js';
-import { Sparkles, X, Settings2 } from 'lucide-react';
+import React, { useState } from "react";
+import { ProviderDiagnostic } from "../types.js";
+import { Sparkles, X, Settings2 } from "lucide-react";
 
 interface DiagnosticsBannerProps {
   providers: ProviderDiagnostic[];
   onOpenModelSettings?: () => void;
 }
 
-export const DiagnosticsBanner: React.FC<DiagnosticsBannerProps> = ({ providers, onOpenModelSettings }) => {
+export const DiagnosticsBanner: React.FC<DiagnosticsBannerProps> = ({
+  providers,
+  onOpenModelSettings,
+}) => {
   const [dismissed, setDismissed] = useState(false);
-  const gemini = providers.find((p) => p.id === 'gemini');
-  const geminiLite = providers.find((p) => p.id === 'gemini-lite');
-  const hasHealthyGemini = (gemini && gemini.status === 'online') || (geminiLite && geminiLite.status === 'online');
+  const gemini = providers.find((p) => p.id === "gemini");
+  const geminiLite = providers.find((p) => p.id === "gemini-lite");
+  const hasHealthyGemini =
+    (gemini && gemini.status === "online") ||
+    (geminiLite && geminiLite.status === "online");
 
   // If Google Gemini is configured and live, or user dismissed, don't show banner
   if (hasHealthyGemini || dismissed) {
@@ -24,11 +29,17 @@ export const DiagnosticsBanner: React.FC<DiagnosticsBannerProps> = ({ providers,
         <div className="flex items-center gap-2 min-w-0">
           <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
           <span className="truncate">
-            Running on <strong>Cognify Academic Syllabus Engine</strong> (Zero-cost built-in mode).
+            <strong>Built-in syllabus engine available</strong> / No live Gemini
+            connection.
           </span>
-          <span aria-hidden="true" className="text-indigo-300 dark:text-zinc-600 hidden sm:inline">·</span>
+          <span
+            aria-hidden="true"
+            className="text-indigo-300 dark:text-zinc-600 hidden sm:inline"
+          >
+            ·
+          </span>
           <span className="text-slate-600 dark:text-zinc-400 hidden md:inline">
-            Connect your free Google AI Studio Gemini key for live frontier reasoning.
+            Configure a provider for live AI responses.
           </span>
         </div>
 
@@ -46,6 +57,7 @@ export const DiagnosticsBanner: React.FC<DiagnosticsBannerProps> = ({ providers,
             onClick={() => setDismissed(true)}
             className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200"
             title="Dismiss"
+            aria-label="Dismiss provider notice"
           >
             <X className="w-3.5 h-3.5" />
           </button>

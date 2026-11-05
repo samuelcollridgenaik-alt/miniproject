@@ -1,0 +1,398 @@
+[
+  {
+    "height": 704,
+    "mainOverflow": 0,
+    "module": "Academic AI Tutor",
+    "rail": 9,
+    "sidebarModules": 0,
+    "theme": "dark",
+    "width": 1366
+  },
+  {
+    "height": 704,
+    "mainOverflow": 0,
+    "module": "Course Notes & Vault",
+    "rail": 9,
+    "sidebarModules": 0,
+    "theme": "dark",
+    "width": 1366
+  },
+  {
+    "height": 704,
+    "mainOverflow": 0,
+    "module": "Active Recall & Cards",
+    "rail": 9,
+    "sidebarModules": 0,
+    "theme": "dark",
+    "width": 1366
+  },
+  {
+    "height": 704,
+    "mainOverflow": 0,
+    "module": "Adaptive Quizzer",
+    "rail": 9,
+    "sidebarModules": 0,
+    "theme": "dark",
+    "width": 1366
+  },
+  {
+    "height": 704,
+    "mainOverflow": 0,
+    "module": "Topic Mastery & Radar",
+    "rail": 9,
+    "sidebarModules": 0,
+    "theme": "dark",
+    "width": 1366
+  },
+  {
+    "height": 704,
+    "mainOverflow": 0,
+    "module": "Exam Revision Planner",
+    "rail": 9,
+    "sidebarModules": 0,
+    "theme": "dark",
+    "width": 1366
+  },
+  {
+    "height": 704,
+    "mainOverflow": 0,
+    "module": "Multi-Model Lab",
+    "rail": 9,
+    "sidebarModules": 0,
+    "theme": "dark",
+    "width": 1366
+  },
+  {
+    "height": 704,
+    "mainOverflow": 0,
+    "module": "Fact-Check & Audit",
+    "rail": 9,
+    "sidebarModules": 0,
+    "theme": "dark",
+    "width": 1366
+  },
+  {
+    "height": 704,
+    "mainOverflow": 0,
+    "module": "MCA Viva & Evaluator Lab",
+    "rail": 9,
+    "sidebarModules": 0,
+    "theme": "dark",
+    "width": 1366
+  },
+  {
+    "height": 704,
+    "mainOverflow": 0,
+    "module": "Academic AI Tutor",
+    "theme": "light",
+    "width": 1366
+  },
+  {
+    "height": 704,
+    "mainOverflow": 0,
+    "module": "Course Notes & Vault",
+    "theme": "light",
+    "width": 1366
+  },
+  {
+    "height": 704,
+    "mainOverflow": 0,
+    "module": "Active Recall & Cards",
+    "theme": "light",
+    "width": 1366
+  },
+  {
+    "height": 704,
+    "mainOverflow": 0,
+    "module": "Adaptive Quizzer",
+    "theme": "light",
+    "width": 1366
+  },
+  {
+    "height": 704,
+    "mainOverflow": 0,
+    "module": "Topic Mastery & Radar",
+    "theme": "light",
+    "width": 1366
+  },
+  {
+    "height": 704,
+    "mainOverflow": 0,
+    "module": "Exam Revision Planner",
+    "theme": "light",
+    "width": 1366
+  },
+  {
+    "height": 704,
+    "mainOverflow": 0,
+    "module": "Multi-Model Lab",
+    "theme": "light",
+    "width": 1366
+  },
+  {
+    "height": 704,
+    "mainOverflow": 0,
+    "module": "Fact-Check & Audit",
+    "theme": "light",
+    "width": 1366
+  },
+  {
+    "height": 704,
+    "mainOverflow": 0,
+    "module": "MCA Viva & Evaluator Lab",
+    "theme": "light",
+    "width": 1366
+  },
+  {
+    "height": 844,
+    "mainOverflow": 0,
+    "module": "Academic AI Tutor",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "height": 844,
+    "mainOverflow": 0,
+    "module": "Course Notes & Vault",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "height": 844,
+    "mainOverflow": 0,
+    "module": "Active Recall & Cards",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "height": 844,
+    "mainOverflow": 0,
+    "module": "Adaptive Quizzer",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "height": 844,
+    "mainOverflow": 0,
+    "module": "Topic Mastery & Radar",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "height": 844,
+    "mainOverflow": 0,
+    "module": "Exam Revision Planner",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "height": 844,
+    "mainOverflow": 0,
+    "module": "Multi-Model Lab",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "height": 844,
+    "mainOverflow": 0,
+    "module": "Fact-Check & Audit",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "height": 844,
+    "mainOverflow": 0,
+    "module": "MCA Viva & Evaluator Lab",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "height": 844,
+    "mainOverflow": 0,
+    "module": "Academic AI Tutor",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "height": 844,
+    "mainOverflow": 0,
+    "module": "Course Notes & Vault",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "height": 844,
+    "mainOverflow": 0,
+    "module": "Active Recall & Cards",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "height": 844,
+    "mainOverflow": 0,
+    "module": "Adaptive Quizzer",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "height": 844,
+    "mainOverflow": 0,
+    "module": "Topic Mastery & Radar",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "height": 844,
+    "mainOverflow": 0,
+    "module": "Exam Revision Planner",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "height": 844,
+    "mainOverflow": 0,
+    "module": "Multi-Model Lab",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "height": 844,
+    "mainOverflow": 0,
+    "module": "Fact-Check & Audit",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "height": 844,
+    "mainOverflow": 0,
+    "module": "MCA Viva & Evaluator Lab",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "height": 1024,
+    "mainOverflow": 0,
+    "module": "Academic AI Tutor",
+    "theme": "dark",
+    "width": 768
+  },
+  {
+    "height": 1024,
+    "mainOverflow": 0,
+    "module": "Course Notes & Vault",
+    "theme": "dark",
+    "width": 768
+  },
+  {
+    "height": 1024,
+    "mainOverflow": 0,
+    "module": "Active Recall & Cards",
+    "theme": "dark",
+    "width": 768
+  },
+  {
+    "height": 1024,
+    "mainOverflow": 0,
+    "module": "Adaptive Quizzer",
+    "theme": "dark",
+    "width": 768
+  },
+  {
+    "height": 1024,
+    "mainOverflow": 0,
+    "module": "Topic Mastery & Radar",
+    "theme": "dark",
+    "width": 768
+  },
+  {
+    "height": 1024,
+    "mainOverflow": 0,
+    "module": "Exam Revision Planner",
+    "theme": "dark",
+    "width": 768
+  },
+  {
+    "height": 1024,
+    "mainOverflow": 0,
+    "module": "Multi-Model Lab",
+    "theme": "dark",
+    "width": 768
+  },
+  {
+    "height": 1024,
+    "mainOverflow": 0,
+    "module": "Fact-Check & Audit",
+    "theme": "dark",
+    "width": 768
+  },
+  {
+    "height": 1024,
+    "mainOverflow": 0,
+    "module": "MCA Viva & Evaluator Lab",
+    "theme": "dark",
+    "width": 768
+  },
+  {
+    "height": 568,
+    "mainOverflow": 0,
+    "module": "Academic AI Tutor",
+    "theme": "dark",
+    "width": 320
+  },
+  {
+    "height": 568,
+    "mainOverflow": 0,
+    "module": "Course Notes & Vault",
+    "theme": "dark",
+    "width": 320
+  },
+  {
+    "height": 568,
+    "mainOverflow": 0,
+    "module": "Active Recall & Cards",
+    "theme": "dark",
+    "width": 320
+  },
+  {
+    "height": 568,
+    "mainOverflow": 0,
+    "module": "Adaptive Quizzer",
+    "theme": "dark",
+    "width": 320
+  },
+  {
+    "height": 568,
+    "mainOverflow": 0,
+    "module": "Topic Mastery & Radar",
+    "theme": "dark",
+    "width": 320
+  },
+  {
+    "height": 568,
+    "mainOverflow": 0,
+    "module": "Exam Revision Planner",
+    "theme": "dark",
+    "width": 320
+  },
+  {
+    "height": 568,
+    "mainOverflow": 0,
+    "module": "Multi-Model Lab",
+    "theme": "dark",
+    "width": 320
+  },
+  {
+    "height": 568,
+    "mainOverflow": 0,
+    "module": "Fact-Check & Audit",
+    "theme": "dark",
+    "width": 320
+  },
+  {
+    "height": 568,
+    "mainOverflow": 0,
+    "module": "MCA Viva & Evaluator Lab",
+    "theme": "dark",
+    "width": 320
+  }
+]

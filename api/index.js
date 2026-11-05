@@ -1934,6 +1934,60 @@ Respond ONLY with valid JSON in this exact format:
 };
 var studyMaterialService = new StudyMaterialService();
 
+// server/workflows/reviewResult.ts
+function parseAuditResponse(response) {
+  const base = {
+    requestId: response.requestId,
+    auditorProvider: response.provider,
+    auditorModel: response.model,
+    latencyMs: response.latencyMs
+  };
+  const unavailable = {
+    ...base,
+    isAssessmentAvailable: false,
+    verdict: "FLAGGED",
+    consistencyScore: 0,
+    unsupportedClaims: [],
+    factualDiscrepancies: [],
+    ambiguousQuestions: [],
+    recommendations: [
+      "No validated audit assessment is available. Configure a live provider or retry, then review the source material manually."
+    ]
+  };
+  if (response.provider === "cognify-curriculum") return unavailable;
+  try {
+    const parsed = JSON.parse(
+      response.text.replace(/^\s*```(?:json)?\s*/, "").replace(/\s*```\s*$/, "").trim()
+    );
+    if (!parsed || typeof parsed !== "object") return unavailable;
+    const data = parsed;
+    if (!["PASS", "FLAGGED", "FAIL"].includes(String(data.verdict)) || typeof data.consistencyScore !== "number" || !Number.isFinite(data.consistencyScore) || data.consistencyScore < 0 || data.consistencyScore > 100)
+      return unavailable;
+    const lists = [
+      "unsupportedClaims",
+      "factualDiscrepancies",
+      "ambiguousQuestions",
+      "recommendations"
+    ];
+    if (lists.some(
+      (key) => !Array.isArray(data[key]) || !data[key].every((item) => typeof item === "string")
+    ))
+      return unavailable;
+    return {
+      ...base,
+      isAssessmentAvailable: true,
+      verdict: data.verdict,
+      consistencyScore: data.consistencyScore,
+      unsupportedClaims: data.unsupportedClaims,
+      factualDiscrepancies: data.factualDiscrepancies,
+      ambiguousQuestions: data.ambiguousQuestions,
+      recommendations: data.recommendations
+    };
+  } catch {
+    return unavailable;
+  }
+}
+
 // server/workflows/reviewService.ts
 var ReviewService = class {
   /**
@@ -1973,35 +2027,7 @@ Respond ONLY with valid JSON in this exact structure:
       temperature: 0.1,
       apiKeyOverride
     });
-    try {
-      const cleaned = response.text.replace(/```json/g, "").replace(/```/g, "").trim();
-      const parsed = JSON.parse(cleaned);
-      return {
-        requestId: response.requestId,
-        auditorProvider: response.provider,
-        auditorModel: response.model,
-        latencyMs: response.latencyMs,
-        verdict: ["PASS", "FLAGGED", "FAIL"].includes(parsed.verdict) ? parsed.verdict : "PASS",
-        consistencyScore: typeof parsed.consistencyScore === "number" ? parsed.consistencyScore : 90,
-        unsupportedClaims: Array.isArray(parsed.unsupportedClaims) ? parsed.unsupportedClaims : [],
-        factualDiscrepancies: Array.isArray(parsed.factualDiscrepancies) ? parsed.factualDiscrepancies : [],
-        ambiguousQuestions: Array.isArray(parsed.ambiguousQuestions) ? parsed.ambiguousQuestions : [],
-        recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : ["Content verified against reference."]
-      };
-    } catch (err) {
-      return {
-        requestId: response.requestId,
-        auditorProvider: response.provider,
-        auditorModel: response.model,
-        latencyMs: response.latencyMs,
-        verdict: "PASS",
-        consistencyScore: 88,
-        unsupportedClaims: [],
-        factualDiscrepancies: [],
-        ambiguousQuestions: [],
-        recommendations: ["Audited text is aligned with source material."]
-      };
-    }
+    return parseAuditResponse(response);
   }
 };
 var reviewService = new ReviewService();
@@ -2157,20 +2183,69 @@ var AnalyticsService = class {
 };
 var analyticsService = new AnalyticsService();
 
+// server/workflows/planningMath.ts
+function planCalendar(examDate, now = /* @__PURE__ */ new Date(), timeZone) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(examDate))
+    throw new Error("Choose a valid exam date.");
+  const [year, month, day] = examDate.split("-").map(Number);
+  const exam = Date.UTC(year, month - 1, day);
+  if (!Number.isFinite(exam) || new Date(exam).toISOString().slice(0, 10) !== examDate)
+    throw new Error("Choose a valid exam date.");
+  let today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  if (timeZone !== void 0) {
+    try {
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).formatToParts(now);
+      const value = (name) => Number(parts.find((part) => part.type === name)?.value);
+      today = Date.UTC(value("year"), value("month") - 1, value("day"));
+    } catch {
+      throw new Error("Choose a valid time zone.");
+    }
+  }
+  const daysRemaining = (exam - today) / 864e5;
+  if (daysRemaining <= 0)
+    throw new Error("Target exam date must be at least 1 day in the future.");
+  return {
+    daysRemaining,
+    dates: Array.from(
+      { length: Math.min(daysRemaining, 30) },
+      (_, index) => new Date(today + index * 864e5).toISOString().slice(0, 10)
+    )
+  };
+}
+function allocateStudyMinutes(total, weights) {
+  if (!Number.isInteger(total) || total < 0 || weights.some((w) => !Number.isFinite(w) || w <= 0) || !weights.length)
+    throw new Error("Invalid study time allocation.");
+  const sum = weights.reduce((a, b) => a + b, 0);
+  const exact = weights.map((w) => w / sum * total);
+  const allocated = exact.map(Math.floor);
+  const order = exact.map((value, index) => ({ index, fraction: value - allocated[index] })).sort((a, b) => b.fraction - a.fraction);
+  const remaining = total - allocated.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < remaining; i++) allocated[order[i].index]++;
+  return allocated;
+}
+
 // server/workflows/studyPlannerService.ts
 var StudyPlannerService = class {
   async generatePlan(params) {
-    const today = /* @__PURE__ */ new Date();
-    today.setHours(0, 0, 0, 0);
-    const examDate = new Date(params.examDate);
-    examDate.setHours(0, 0, 0, 0);
-    const timeDiffMs = examDate.getTime() - today.getTime();
-    const daysRemaining = Math.max(1, Math.ceil(timeDiffMs / (1e3 * 60 * 60 * 24)));
-    if (timeDiffMs <= 0) {
-      throw new Error("Target exam date must be at least 1 day in the future.");
-    }
-    const dailyAvailableHours = Math.min(14, Math.max(0.5, params.dailyAvailableHours));
-    const totalStudyHoursAllocated = Math.round(daysRemaining * dailyAvailableHours * 10) / 10;
+    const { daysRemaining, dates } = planCalendar(
+      params.examDate,
+      /* @__PURE__ */ new Date(),
+      params.timeZone
+    );
+    if (!Number.isFinite(params.dailyAvailableHours))
+      throw new Error("Daily study hours must be a number.");
+    const dailyAvailableHours = Math.min(
+      14,
+      Math.max(0.5, params.dailyAvailableHours)
+    );
+    const totalStudyHoursAllocated = Math.round(
+      dates.length * Math.round(dailyAvailableHours * 60) / 60 * 10
+    ) / 10;
     let masteries = analyticsService.calculateTopicMastery();
     if (masteries.length === 0) {
       const allChunks = vectorStore.getAllChunks();
@@ -2187,8 +2262,22 @@ var StudyPlannerService = class {
         }));
       } else {
         masteries = [
-          { topic: "Foundational Theory", totalQuestions: 0, correctAnswers: 0, masteryPercentage: 40, classification: "weak", recommendedAction: "Initial reading" },
-          { topic: "Core Algorithms & Systems", totalQuestions: 0, correctAnswers: 0, masteryPercentage: 50, classification: "moderate", recommendedAction: "Problem solving" }
+          {
+            topic: "Foundational Theory",
+            totalQuestions: 0,
+            correctAnswers: 0,
+            masteryPercentage: 40,
+            classification: "weak",
+            recommendedAction: "Initial reading"
+          },
+          {
+            topic: "Core Algorithms & Systems",
+            totalQuestions: 0,
+            correctAnswers: 0,
+            masteryPercentage: 50,
+            classification: "moderate",
+            recommendedAction: "Problem solving"
+          }
         ];
       }
     }
@@ -2199,34 +2288,28 @@ var StudyPlannerService = class {
       weight: Math.max(20, 100 - m.masteryPercentage)
       // Higher weight for lower mastery
     }));
-    const totalWeight = weights.reduce((sum, w) => sum + w.weight, 0);
     const dailyMinutes = Math.round(dailyAvailableHours * 60);
     const dailySchedule = [];
     for (let day = 1; day <= Math.min(daysRemaining, 30); day++) {
-      const scheduleDate = new Date(today.getTime() + (day - 1) * 24 * 60 * 60 * 1e3);
-      const dateStr = scheduleDate.toISOString().split("T")[0];
+      const dateStr = dates[day - 1];
       const rotated = [...weights].sort((a, b) => {
         const scoreA = a.weight + day * 7 % 19;
         const scoreB = b.weight + day * 11 % 19;
         return scoreB - scoreA;
       });
       const todayFocus = rotated.slice(0, Math.min(3, rotated.length));
-      const todayTotalWeight = todayFocus.reduce((s, t) => s + t.weight, 0);
-      let allocatedSum = 0;
+      const allocations = allocateStudyMinutes(
+        dailyMinutes,
+        todayFocus.map((topic) => topic.weight)
+      );
       const focusTopics = todayFocus.map((f, idx) => {
-        let minutes;
-        if (idx === todayFocus.length - 1) {
-          minutes = dailyMinutes - allocatedSum;
-        } else {
-          minutes = Math.round(f.weight / todayTotalWeight * dailyMinutes);
-          allocatedSum += minutes;
-        }
+        const minutes = allocations[idx];
         const activityType = f.mastery < 50 ? day % 2 === 1 ? "conceptual_revision" : "flashcard_drill" : day % 2 === 1 ? "practice_problems" : "mock_quiz";
         return {
           topic: f.topic,
           currentMastery: f.mastery,
           targetMastery: Math.min(95, f.mastery + 25),
-          allocatedMinutes: Math.max(15, minutes),
+          allocatedMinutes: minutes,
           activityType,
           sourceDocuments: [f.topic]
         };
@@ -2250,11 +2333,13 @@ var StudyPlannerService = class {
       0
     );
     const expectedMinutes = dailySchedule.length * dailyMinutes;
-    const isScheduleMathematicallyFeasible = Math.abs(totalAllocatedMinutes - expectedMinutes) <= 5;
-    const scheduleValidationMessage = isScheduleMathematicallyFeasible ? `Verified: Total allocated study time (${Math.round(totalAllocatedMinutes / 60)} hrs) exactly matches user constraint (${dailyAvailableHours} hrs/day over ${dailySchedule.length} days). Daily topic weights are inversely proportional to measured mastery.` : `Schedule adjusted: Allocated ${Math.round(totalAllocatedMinutes / 60)} hours across ${dailySchedule.length} days.`;
-    let strategicAdvice = `Prioritize high-yield revision for weaker topics (${weakTopics.join(", ") || "Core Modules"}). Utilize active recall testing immediately after revision sessions.`;
+    const isScheduleMathematicallyFeasible = totalAllocatedMinutes === expectedMinutes;
+    const scheduleValidationMessage = isScheduleMathematicallyFeasible ? `Daily topic allocations match the ${dailyMinutes}-minute budget across ${dailySchedule.length} days. Topic weights use recorded mastery where available, otherwise unassessed baseline values.` : `Schedule adjusted: Allocated ${Math.round(totalAllocatedMinutes / 60)} hours across ${dailySchedule.length} days.`;
+    const goal = typeof params.subjectGoal === "string" && params.subjectGoal.trim() ? params.subjectGoal.trim() : "your available course material";
+    let strategicAdvice = `For ${goal}, prioritize high-yield revision for weaker topics (${weakTopics.join(", ") || "Core Modules"}). Utilize active recall testing immediately after revision sessions.`;
     try {
-      const prompt = `Student has ${daysRemaining} days remaining until exam.
+      const prompt = `Student revision goal: ${goal}.
+Student has ${daysRemaining} days remaining until exam.
 Daily study capacity: ${dailyAvailableHours} hours/day.
 Identified topic mastery:
 ${masteries.map((m) => `- ${m.topic}: ${m.masteryPercentage}% (${m.classification})`).join("\n")}
@@ -2538,8 +2623,6 @@ app.use((req, res, next) => {
   }
   if (req.originalUrl && req.originalUrl.startsWith("/api") && (!req.url || req.url === "/" || req.url === "/api" || req.url === "/api/")) {
     req.url = req.originalUrl;
-  } else if (req.url && !req.url.startsWith("/api") && !req.url.startsWith("/assets") && !req.url.startsWith("/favicon")) {
-    req.url = "/api" + (req.url.startsWith("/") ? req.url : "/" + req.url);
   }
   next();
 });
@@ -3013,14 +3096,18 @@ app.get("/api/analytics/mastery", (req, res) => {
 app.post("/api/study-plan/generate", async (req, res) => {
   try {
     const user = getAuthUser(req);
-    const { examDate, dailyAvailableHours, subjectGoal } = req.body;
+    const { examDate, dailyAvailableHours, subjectGoal, timeZone } = req.body;
     if (!examDate) {
       return res.status(400).json({ success: false, error: "examDate is required (YYYY-MM-DD)." });
+    }
+    if (timeZone !== void 0 && (typeof timeZone !== "string" || timeZone.length > 80)) {
+      return res.status(400).json({ success: false, error: "timeZone must be a valid IANA time-zone name." });
     }
     const plan = await studyPlannerService.generatePlan({
       examDate,
       dailyAvailableHours: parseFloat(dailyAvailableHours) || 3,
-      subjectGoal
+      subjectGoal,
+      timeZone
     });
     plan.userId = user.id;
     res.json({ success: true, data: plan });

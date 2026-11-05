@@ -1,4 +1,5 @@
-export type LLMProviderId = 'gemini' | 'gemini-lite' | 'groq' | 'cognify-curriculum';
+export type LLMProviderId =
+  "gemini" | "gemini-lite" | "groq" | "cognify-curriculum";
 
 export interface UserProfile {
   id: string;
@@ -9,7 +10,7 @@ export interface UserProfile {
   institution?: string;
   program?: string;
   semester?: string;
-  role: 'student' | 'evaluator' | 'faculty';
+  role: "student" | "evaluator" | "faculty";
   createdAt: string;
   password?: string;
   geminiApiKey?: string;
@@ -27,7 +28,7 @@ export interface ProviderConfig {
   family: string;
   defaultModel: string;
   isConfigured: boolean;
-  status: 'online' | 'offline' | 'unconfigured' | 'error';
+  status: "online" | "offline" | "unconfigured" | "error";
   lastPingMs?: number;
   lastError?: string;
   apiKeyPresent: boolean;
@@ -67,14 +68,25 @@ export interface LLMProvider {
   family: string;
   defaultModel: string;
   isConfigured(apiKeyOverride?: string): boolean;
-  ping(apiKeyOverride?: string): Promise<{ ok: boolean; latencyMs: number; message?: string }>;
+  ping(
+    apiKeyOverride?: string,
+  ): Promise<{ ok: boolean; latencyMs: number; message?: string }>;
   generate(prompt: string, options?: LLMRequestOptions): Promise<LLMResponse>;
 }
 
 export interface ExecutionLog {
   id: string;
   timestamp: string;
-  taskType: 'tutor' | 'summary' | 'flashcards' | 'quiz' | 'review' | 'comparison' | 'planner' | 'evaluation' | 'ping';
+  taskType:
+    | "tutor"
+    | "summary"
+    | "flashcards"
+    | "quiz"
+    | "review"
+    | "comparison"
+    | "planner"
+    | "evaluation"
+    | "ping";
   provider: LLMProviderId;
   model: string;
   latencyMs: number;
@@ -90,7 +102,7 @@ export interface DocumentMetadata {
   userId?: string;
   title: string;
   fileName: string;
-  fileType: 'pdf' | 'pptx' | 'txt';
+  fileType: "pdf" | "pptx" | "txt";
   fileSizeBytes: number;
   uploadedAt: string;
   totalChunks: number;
@@ -139,21 +151,21 @@ export interface QuizQuestion {
   id: string;
   question: string;
   options: {
-    key: 'A' | 'B' | 'C' | 'D';
+    key: "A" | "B" | "C" | "D";
     text: string;
   }[];
-  correctAnswer: 'A' | 'B' | 'C' | 'D';
+  correctAnswer: "A" | "B" | "C" | "D";
   explanation: string;
   topicTag: string;
-  difficulty: 'easy' | 'medium' | 'hard';
+  difficulty: "easy" | "medium" | "hard";
   citation?: string;
 }
 
 export interface QuizAttemptItem {
   questionId: string;
   topicTag: string;
-  selectedAnswer: 'A' | 'B' | 'C' | 'D';
-  correctAnswer: 'A' | 'B' | 'C' | 'D';
+  selectedAnswer: "A" | "B" | "C" | "D";
+  correctAnswer: "A" | "B" | "C" | "D";
   isCorrect: boolean;
 }
 
@@ -167,7 +179,10 @@ export interface QuizAttempt {
   score: number;
   percentage: number;
   items: QuizAttemptItem[];
-  topicBreakdown: Record<string, { correct: number; total: number; percentage: number }>;
+  topicBreakdown: Record<
+    string,
+    { correct: number; total: number; percentage: number }
+  >;
 }
 
 export interface TopicMastery {
@@ -175,16 +190,18 @@ export interface TopicMastery {
   totalQuestions: number;
   correctAnswers: number;
   masteryPercentage: number;
-  classification: 'mastered' | 'moderate' | 'weak';
+  classification: "mastered" | "moderate" | "weak";
   recommendedAction: string;
 }
 
 export interface ContentAuditReview {
+  /** False when the provider response cannot support an audit verdict. */
+  isAssessmentAvailable?: boolean;
   requestId: string;
   auditorProvider: LLMProviderId;
   auditorModel: string;
   latencyMs: number;
-  verdict: 'PASS' | 'FLAGGED' | 'FAIL';
+  verdict: "PASS" | "FLAGGED" | "FAIL";
   consistencyScore: number; // 0 to 100
   unsupportedClaims: string[];
   factualDiscrepancies: string[];
@@ -216,7 +233,11 @@ export interface StudyPlanDay {
     currentMastery: number;
     targetMastery: number;
     allocatedMinutes: number;
-    activityType: 'conceptual_revision' | 'practice_problems' | 'flashcard_drill' | 'mock_quiz';
+    activityType:
+      | "conceptual_revision"
+      | "practice_problems"
+      | "flashcard_drill"
+      | "mock_quiz";
     sourceDocuments: string[];
   }[];
   reviewMilestone?: string;

@@ -1,31 +1,33 @@
-import { StudyPlan, StudyPlanDay } from '../types.js';
-import { analyticsService } from './analyticsService.js';
-import { vectorStore } from '../rag/vectorStore.js';
-import { storage } from '../storage/db.js';
-import { taskRouter } from '../orchestrator/taskRouter.js';
+import { allocateStudyMinutes, planCalendar } from "./planningMath.js";
+import { StudyPlan, StudyPlanDay } from "../types.js";
+import { analyticsService } from "./analyticsService.js";
+import { vectorStore } from "../rag/vectorStore.js";
+import { storage } from "../storage/db.js";
+import { taskRouter } from "../orchestrator/taskRouter.js";
 
 export class StudyPlannerService {
   public async generatePlan(params: {
     examDate: string;
+    timeZone?: string;
     dailyAvailableHours: number;
     subjectGoal?: string;
     skipLlm?: boolean;
   }): Promise<StudyPlan> {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const examDate = new Date(params.examDate);
-    examDate.setHours(0, 0, 0, 0);
-
-    const timeDiffMs = examDate.getTime() - today.getTime();
-    const daysRemaining = Math.max(1, Math.ceil(timeDiffMs / (1000 * 60 * 60 * 24)));
-
-    if (timeDiffMs <= 0) {
-      throw new Error('Target exam date must be at least 1 day in the future.');
-    }
-
-    const dailyAvailableHours = Math.min(14, Math.max(0.5, params.dailyAvailableHours));
-    const totalStudyHoursAllocated = Math.round(daysRemaining * dailyAvailableHours * 10) / 10;
+    const { daysRemaining, dates } = planCalendar(
+      params.examDate,
+      new Date(),
+      params.timeZone,
+    );
+    if (!Number.isFinite(params.dailyAvailableHours))
+      throw new Error("Daily study hours must be a number.");
+    const dailyAvailableHours = Math.min(
+      14,
+      Math.max(0.5, params.dailyAvailableHours),
+    );
+    const totalStudyHoursAllocated =
+      Math.round(
+        ((dates.length * Math.round(dailyAvailableHours * 60)) / 60) * 10,
+      ) / 10;
 
     // Retrieve topic masteries from quiz attempts
     let masteries = analyticsService.calculateTopicMastery();
@@ -40,18 +42,34 @@ export class StudyPlannerService {
           totalQuestions: 0,
           correctAnswers: 0,
           masteryPercentage: 50, // Baseline unassessed
-          classification: 'moderate',
-          recommendedAction: 'Initial diagnostic assessment needed.',
+          classification: "moderate",
+          recommendedAction: "Initial diagnostic assessment needed.",
         }));
       } else {
         masteries = [
-          { topic: 'Foundational Theory', totalQuestions: 0, correctAnswers: 0, masteryPercentage: 40, classification: 'weak', recommendedAction: 'Initial reading' },
-          { topic: 'Core Algorithms & Systems', totalQuestions: 0, correctAnswers: 0, masteryPercentage: 50, classification: 'moderate', recommendedAction: 'Problem solving' },
+          {
+            topic: "Foundational Theory",
+            totalQuestions: 0,
+            correctAnswers: 0,
+            masteryPercentage: 40,
+            classification: "weak",
+            recommendedAction: "Initial reading",
+          },
+          {
+            topic: "Core Algorithms & Systems",
+            totalQuestions: 0,
+            correctAnswers: 0,
+            masteryPercentage: 50,
+            classification: "moderate",
+            recommendedAction: "Problem solving",
+          },
         ];
       }
     }
 
-    const weakTopics = masteries.filter((m) => m.classification === 'weak').map((m) => m.topic);
+    const weakTopics = masteries
+      .filter((m) => m.classification === "weak")
+      .map((m) => m.topic);
 
     // Mathematical schedule distribution:
     // Total deficit weights
@@ -60,7 +78,6 @@ export class StudyPlannerService {
       mastery: m.masteryPercentage,
       weight: Math.max(20, 100 - m.masteryPercentage), // Higher weight for lower mastery
     }));
-    const totalWeight = weights.reduce((sum, w) => sum + w.weight, 0);
 
     const dailyMinutes = Math.round(dailyAvailableHours * 60);
 
@@ -68,8 +85,7 @@ export class StudyPlannerService {
     const dailySchedule: StudyPlanDay[] = [];
 
     for (let day = 1; day <= Math.min(daysRemaining, 30); day++) {
-      const scheduleDate = new Date(today.getTime() + (day - 1) * 24 * 60 * 60 * 1000);
-      const dateStr = scheduleDate.toISOString().split('T')[0];
+      const dateStr = dates[day - 1];
 
       // Distribute today's minutes among top 2-3 focus topics based on deficit
       // Rotate topics across days so student isn't stuck on just one topic
@@ -81,28 +97,31 @@ export class StudyPlannerService {
       });
 
       const todayFocus = rotated.slice(0, Math.min(3, rotated.length));
-      const todayTotalWeight = todayFocus.reduce((s, t) => s + t.weight, 0);
 
-      let allocatedSum = 0;
+      const allocations = allocateStudyMinutes(
+        dailyMinutes,
+        todayFocus.map((topic) => topic.weight),
+      );
       const focusTopics = todayFocus.map((f, idx) => {
-        let minutes: number;
-        if (idx === todayFocus.length - 1) {
-          minutes = dailyMinutes - allocatedSum;
-        } else {
-          minutes = Math.round((f.weight / todayTotalWeight) * dailyMinutes);
-          allocatedSum += minutes;
-        }
-
-        const activityType: 'conceptual_revision' | 'practice_problems' | 'flashcard_drill' | 'mock_quiz' =
+        const minutes = allocations[idx];
+        const activityType:
+          | "conceptual_revision"
+          | "practice_problems"
+          | "flashcard_drill"
+          | "mock_quiz" =
           f.mastery < 50
-            ? (day % 2 === 1 ? 'conceptual_revision' : 'flashcard_drill')
-            : (day % 2 === 1 ? 'practice_problems' : 'mock_quiz');
+            ? day % 2 === 1
+              ? "conceptual_revision"
+              : "flashcard_drill"
+            : day % 2 === 1
+              ? "practice_problems"
+              : "mock_quiz";
 
         return {
           topic: f.topic,
           currentMastery: f.mastery,
           targetMastery: Math.min(95, f.mastery + 25),
-          allocatedMinutes: Math.max(15, minutes),
+          allocatedMinutes: minutes,
           activityType,
           sourceDocuments: [f.topic],
         };
@@ -111,9 +130,10 @@ export class StudyPlannerService {
       // Milestone on key days (e.g., halfway and day before exam)
       let reviewMilestone: string | undefined = undefined;
       if (day === Math.floor(daysRemaining / 2)) {
-        reviewMilestone = 'Mid-point Diagnostic Review & Weak Topic Audit';
+        reviewMilestone = "Mid-point Diagnostic Review & Weak Topic Audit";
       } else if (day === daysRemaining) {
-        reviewMilestone = 'Final High-Yield Formula and Concept Recall Drill (No Cramming)';
+        reviewMilestone =
+          "Final High-Yield Formula and Concept Recall Drill (No Cramming)";
       }
 
       dailySchedule.push({
@@ -127,28 +147,32 @@ export class StudyPlannerService {
 
     // Mathematical feasibility validation
     const totalAllocatedMinutes = dailySchedule.reduce(
-      (sum, d) => sum + d.focusTopics.reduce((sub, f) => sub + f.allocatedMinutes, 0),
-      0
+      (sum, d) =>
+        sum + d.focusTopics.reduce((sub, f) => sub + f.allocatedMinutes, 0),
+      0,
     );
     const expectedMinutes = dailySchedule.length * dailyMinutes;
-    const isScheduleMathematicallyFeasible = Math.abs(totalAllocatedMinutes - expectedMinutes) <= 5;
+    const isScheduleMathematicallyFeasible =
+      totalAllocatedMinutes === expectedMinutes;
     const scheduleValidationMessage = isScheduleMathematicallyFeasible
-      ? `Verified: Total allocated study time (${Math.round(totalAllocatedMinutes / 60)} hrs) exactly matches user constraint (${dailyAvailableHours} hrs/day over ${dailySchedule.length} days). Daily topic weights are inversely proportional to measured mastery.`
+      ? `Daily topic allocations match the ${dailyMinutes}-minute budget across ${dailySchedule.length} days. Topic weights use recorded mastery where available, otherwise unassessed baseline values.`
       : `Schedule adjusted: Allocated ${Math.round(totalAllocatedMinutes / 60)} hours across ${dailySchedule.length} days.`;
 
     // Generate high-level LLM strategic advice
-    let strategicAdvice = `Prioritize high-yield revision for weaker topics (${weakTopics.join(', ') || 'Core Modules'}). Utilize active recall testing immediately after revision sessions.`;
+    const goal = typeof params.subjectGoal === 'string' && params.subjectGoal.trim() ? params.subjectGoal.trim() : 'your available course material';
+    let strategicAdvice = `For ${goal}, prioritize high-yield revision for weaker topics (${weakTopics.join(", ") || "Core Modules"}). Utilize active recall testing immediately after revision sessions.`;
 
     try {
-      const prompt = `Student has ${daysRemaining} days remaining until exam.
+      const prompt = `Student revision goal: ${goal}.
+Student has ${daysRemaining} days remaining until exam.
 Daily study capacity: ${dailyAvailableHours} hours/day.
 Identified topic mastery:
-${masteries.map((m) => `- ${m.topic}: ${m.masteryPercentage}% (${m.classification})`).join('\n')}
+${masteries.map((m) => `- ${m.topic}: ${m.masteryPercentage}% (${m.classification})`).join("\n")}
 
 Provide 3 actionable, high-impact cognitive revision principles tailored to this timeline. Keep it under 150 words.`;
 
-      if (!params.skipLlm && taskRouter.getProvider('gemini').isConfigured()) {
-        const res = await taskRouter.executeTask('planner', prompt, {
+      if (!params.skipLlm && taskRouter.getProvider("gemini").isConfigured()) {
+        const res = await taskRouter.executeTask("planner", prompt, {
           temperature: 0.3,
           maxTokens: 250,
           timeoutMs: 4000,
@@ -169,7 +193,10 @@ Provide 3 actionable, high-impact cognitive revision principles tailored to this
       totalStudyHoursAllocated,
       isScheduleMathematicallyFeasible,
       scheduleValidationMessage,
-      weakTopicsTargeted: weakTopics.length > 0 ? weakTopics : masteries.slice(0, 2).map((m) => m.topic),
+      weakTopicsTargeted:
+        weakTopics.length > 0
+          ? weakTopics
+          : masteries.slice(0, 2).map((m) => m.topic),
       dailySchedule,
       strategicAdvice,
     };

@@ -1,0 +1,4 @@
+Cognify UI audit upload fixture. This file contains no personal data or credentials.
+Database transactions have four ACID properties: atomicity, consistency, isolation and durability.
+Paging maps fixed-size virtual pages to physical frames. A page table records these mappings.
+This short document exists only to verify the document ingestion user interface.

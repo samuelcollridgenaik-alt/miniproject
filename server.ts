@@ -36,8 +36,6 @@ app.use((req: Request, res: Response, next) => {
   // When Vercel rewrites /api/(.*) to /api, req.originalUrl retains the incoming request path
   if (req.originalUrl && req.originalUrl.startsWith('/api') && (!req.url || req.url === '/' || req.url === '/api' || req.url === '/api/')) {
     req.url = req.originalUrl;
-  } else if (req.url && !req.url.startsWith('/api') && !req.url.startsWith('/assets') && !req.url.startsWith('/favicon')) {
-    req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
   }
   next();
 });
@@ -623,15 +621,19 @@ app.get('/api/analytics/mastery', (req: Request, res: Response) => {
 app.post('/api/study-plan/generate', async (req: Request, res: Response) => {
   try {
     const user = getAuthUser(req);
-    const { examDate, dailyAvailableHours, subjectGoal } = req.body;
+    const { examDate, dailyAvailableHours, subjectGoal, timeZone } = req.body;
     if (!examDate) {
       return res.status(400).json({ success: false, error: 'examDate is required (YYYY-MM-DD).' });
+    }
+    if (timeZone !== undefined && (typeof timeZone !== 'string' || timeZone.length > 80)) {
+      return res.status(400).json({ success: false, error: 'timeZone must be a valid IANA time-zone name.' });
     }
 
     const plan = await studyPlannerService.generatePlan({
       examDate,
       dailyAvailableHours: parseFloat(dailyAvailableHours) || 3,
       subjectGoal,
+      timeZone,
     });
     plan.userId = user.id;
 

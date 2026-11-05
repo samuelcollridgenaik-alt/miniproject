@@ -1,4 +1,4 @@
-# Cognify AI — Notion-Style Academic Intelligence System
+# Cognify AI — Academic Intelligence Workspace
 > **MCA Final/Mini Project** · Multimodal RAG & Multi-LLM Orchestration Layer  
 > **Student:** Samuel Collridge Naik (`MCA-2025-084`)  
 > **Institution:** School of Computer Science & Applications
@@ -7,7 +7,7 @@
 
 ## 📌 Executive Summary
 
-**Cognify AI** is a multimodal, retrieval-augmented generation (RAG) academic intelligence platform and student productivity workspace styled like an interactive **"Notion on Steroids"**. It combines real-time document grounding with a multi-LLM orchestration layer to deliver verified tutoring, active recall flashcards, adaptive assessments, independent fact-checking, and exam revision scheduling.
+**Cognify AI** is a multimodal, retrieval-augmented generation (RAG) academic intelligence platform and student productivity workspace using a consistent **Codex-inspired academic workspace**. It combines real-time document grounding with a multi-LLM orchestration layer to deliver verified tutoring, active recall flashcards, adaptive assessments, independent fact-checking, and exam revision scheduling.
 
 ---
 
@@ -70,7 +70,7 @@ Cognify AI uses a provider-agnostic adapter layer with intelligent task routing:
 ## 🚀 Quick Start Guide
 
 ### 1. Prerequisites
-- Node.js 20+
+- Node.js 22.12+
 - (Optional) Python 3.10+ for the FastAPI package
 
 ### 2. Installation
@@ -128,13 +128,7 @@ git push -u origin main
 
 The evaluation subsystem tests the RAG pipeline using a curated MCA benchmark suite:
 
-| Metric | Target | Measured Result | Status |
-|---|---|---|---|
-| **Recall@1** | > 85% | **100.0%** | PASS |
-| **Recall@3** | > 95% | **100.0%** | PASS |
-| **Citation Accuracy** | 100% | **100.0%** | PASS |
-| **Answer Faithfulness** | > 90% | **94.5%** | PASS |
-| **Avg Retrieval Latency** | < 100ms | **24.2 ms** | PASS |
+Use the in-app evaluator to run the current retrieval benchmark on your actual indexed notes. These results depend on the dataset; no independently measured answer-faithfulness percentage is provided. See [verified audit results](docs/UI_UX_VERIFICATION.md) for the checks executed during the UI audit.
 
 Run the test suite live via the in-app **Evaluator Lab** tab or via API:
 ```bash
@@ -146,3 +140,27 @@ curl -X POST http://localhost:3000/api/evaluation/run-benchmark
 ## 📜 License & Academic Integrity
 
 Developed for academic evaluation as an MCA Mini Project. Built with Google Gemini API, Groq Cloud, React, Tailwind CSS, Express, and Vite.
+
+## Codex-inspired workspace update
+
+The shared interface now includes a navigation rail, resizable sidebar, local conversation history, functional tabs and a persistent academic composer. See [workspace implementation and verification](docs/WORKSPACE-REDESIGN.md) for updated setup, dependency changes, checks, local-storage limits and existing production security blockers.
+
+```powershell
+npm run dev
+npm run lint
+npm test
+npm run build
+```
+
+## Project-wide UI/UX audit
+
+The audit covers all nine academic modules, standalone authentication and account/settings/search/removal dialogs in the shared charcoal/light design system.
+
+- [Audit findings and route inventory](docs/UI_UX_AUDIT.md)
+- [Design system](docs/DESIGN_SYSTEM.md)
+- [Verification and genuine limits](docs/UI_UX_VERIFICATION.md)
+- [Review screenshots](docs/UI_SCREENSHOTS.md)
+
+The project still uses demonstration authentication and client-supplied quiz answer keys. Read the audit's production blockers before exposing it publicly.
+
+Latest shell refinement and measured visual comparison: [Codex fidelity report](docs/CODEX_FIDELITY.md).
