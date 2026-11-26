@@ -58,12 +58,12 @@ export class AnalyticsService {
     return masteries.sort((a, b) => a.masteryPercentage - b.masteryPercentage);
   }
 
-  public getWeakTopics(): TopicMastery[] {
-    return this.calculateTopicMastery().filter((m) => m.classification === 'weak');
+  public getWeakTopics(userId?: string): TopicMastery[] {
+    return this.calculateTopicMastery(userId).filter((m) => m.classification === 'weak');
   }
 
-  public getOverallStatistics() {
-    const attempts = storage.getQuizAttempts();
+  public getOverallStatistics(userId?: string) {
+    const attempts = storage.getQuizAttempts(userId);
     const totalQuizzes = attempts.length;
     let totalQuestionsAttempted = 0;
     let totalCorrect = 0;
@@ -77,7 +77,7 @@ export class AnalyticsService {
       ? Math.round((totalCorrect / totalQuestionsAttempted) * 100)
       : 0;
 
-    const topicMasteries = this.calculateTopicMastery();
+    const topicMasteries = this.calculateTopicMastery(userId);
     const weakCount = topicMasteries.filter((t) => t.classification === 'weak').length;
     const masteredCount = topicMasteries.filter((t) => t.classification === 'mastered').length;
 

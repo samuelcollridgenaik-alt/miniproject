@@ -33,7 +33,7 @@ export default function App() {
   const [activeProvider, setActiveProvider] = useState<LLMProviderId>(() => {
     return (
       (localStorage.getItem("cognify_preferred_provider") as LLMProviderId) ||
-      "gemini"
+      "cognify-curriculum"
     );
   });
   const [geminiKey, setGeminiKey] = useState<string>(() => {

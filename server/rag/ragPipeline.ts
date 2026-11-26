@@ -2,6 +2,7 @@ import { GroundedAnswer, LLMProviderId, RetrievalResult } from '../types.js';
 import { vectorStore } from './vectorStore.js';
 import { taskRouter } from '../orchestrator/taskRouter.js';
 import { CONFIG } from '../config.js';
+import { localNotesAnswer } from './localNotes.js';
 
 export class RagPipeline {
   public async retrieveContext(
@@ -51,6 +52,16 @@ Provide an encouraging, clear, and structured academic explanation. Include an i
           apiKeyOverride: options?.apiKeyOverride,
         });
 
+        if (llmResponse.provider === 'cognify-curriculum') {
+          return {
+            requestId: llmResponse.requestId, provider: llmResponse.provider,
+            model: 'cognify-local-extractive-v1', latencyMs: llmResponse.latencyMs,
+            question, answer: localNotesAnswer([], CONFIG.rag.minSimilarityThreshold),
+            isSufficientlyGrounded: false, groundingConfidence: 0,
+            citations: [], retrievedChunksCount: results.length,
+          };
+        }
+
         return {
           requestId: llmResponse.requestId,
           provider: llmResponse.provider,
@@ -59,7 +70,7 @@ Provide an encouraging, clear, and structured academic explanation. Include an i
           question,
           answer: `> 💡 **General Academic Knowledge:** *No uploaded course notes directly matched this query. Here is a foundational explanation synthesized by Cognify AI. (Upload your syllabus or lecture notes in the Documents tab for exact slide/page citations!)*\n\n${llmResponse.text}`,
           isSufficientlyGrounded: false,
-          groundingConfidence: results.length > 0 ? Math.round(maxScore * 100) / 100 : 0.5,
+          groundingConfidence: results.length > 0 ? Math.round(maxScore * 100) / 100 : 0,
           citations: results.map((r) => ({
             source: r.chunk.documentTitle,
             pageOrSlide: r.chunk.pageOrSlideNumber,
@@ -121,16 +132,19 @@ Provide a comprehensive, accurate academic answer grounded strictly in these exc
         apiKeyOverride: options?.apiKeyOverride,
       });
 
+      const local = llmResponse.provider === 'cognify-curriculum';
+      const citedResults = local ? results.filter(r => r.similarityScore >= CONFIG.rag.minSimilarityThreshold) : results;
+
       return {
         requestId: llmResponse.requestId,
         provider: llmResponse.provider,
-        model: llmResponse.model,
+        model: local ? 'cognify-local-extractive-v1' : llmResponse.model,
         latencyMs: llmResponse.latencyMs,
         question,
-        answer: llmResponse.text,
+        answer: local ? localNotesAnswer(citedResults, CONFIG.rag.minSimilarityThreshold, question) : llmResponse.text,
         isSufficientlyGrounded: true,
         groundingConfidence: Math.min(1.0, Math.round((maxScore + 0.15) * 100) / 100),
-        citations: results.map((r) => ({
+        citations: citedResults.map((r) => ({
           source: r.chunk.documentTitle,
           pageOrSlide: r.chunk.pageOrSlideNumber,
           quoteSnippet: r.chunk.text.substring(0, 160) + '...',

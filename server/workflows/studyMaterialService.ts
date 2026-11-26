@@ -1,6 +1,8 @@
 import { QuizQuestion } from '../types.js';
 import { vectorStore } from '../rag/vectorStore.js';
 import { taskRouter } from '../orchestrator/taskRouter.js';
+import { localFlashcards, localSummary, localQuiz } from './localStudyMaterial.js';
+import { CONFIG } from '../config.js';
 
 export interface Flashcard {
   id: string;
@@ -25,6 +27,8 @@ export class StudyMaterialService {
    */
   public async generateSummary(documentId?: string, apiKeyOverride?: string): Promise<AcademicSummary> {
     let chunks = documentId ? vectorStore.getDocumentChunks(documentId) : vectorStore.getAllChunks();
+    if (!chunks.length) throw new Error('Add course notes before generating a digest.');
+    if (!apiKeyOverride && !CONFIG.gemini.apiKey && !CONFIG.groq.apiKey) return localSummary(chunks);
     const isGeneric = chunks.length === 0;
     const sampleChunks = isGeneric ? [] : chunks.slice(0, 10);
     const docTitle = isGeneric ? 'MCA Systems & Computer Science Fundamentals' : chunks[0].documentTitle;
@@ -63,6 +67,10 @@ Respond ONLY with valid JSON in this exact structure:
       apiKeyOverride,
     });
 
+    if (response.provider === 'cognify-curriculum') {
+      return localSummary(chunks);
+    }
+
     try {
       const cleaned = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
       const parsed: AcademicSummary = JSON.parse(cleaned);
@@ -87,6 +95,8 @@ Respond ONLY with valid JSON in this exact structure:
    */
   public async generateFlashcards(documentId?: string, count: number = 8, apiKeyOverride?: string): Promise<Flashcard[]> {
     let chunks = documentId ? vectorStore.getDocumentChunks(documentId) : vectorStore.getAllChunks();
+    if (!chunks.length) throw new Error('Add course notes before generating flashcards.');
+    if (!apiKeyOverride && !CONFIG.gemini.apiKey && !CONFIG.groq.apiKey) return localFlashcards(chunks, count);
     const isGeneric = chunks.length === 0;
     const sampleChunks = isGeneric ? [] : chunks.slice(0, 10);
     const docTitle = isGeneric ? 'MCA Systems & Computer Science Fundamentals' : chunks[0].documentTitle;
@@ -123,6 +133,10 @@ Respond ONLY with valid JSON in this exact structure:
       apiKeyOverride,
     });
 
+    if (response.provider === 'cognify-curriculum') {
+      return localFlashcards(chunks, count);
+    }
+
     try {
       const cleaned = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
       const data = JSON.parse(cleaned);
@@ -144,6 +158,9 @@ Respond ONLY with valid JSON in this exact structure:
    */
   public async generateQuiz(documentId?: string, count: number = 5, apiKeyOverride?: string): Promise<QuizQuestion[]> {
     let chunks = documentId ? vectorStore.getDocumentChunks(documentId) : vectorStore.getAllChunks();
+    if (!chunks.length) throw new Error('Add course notes before generating a quiz.');
+    count = Math.max(1, Math.min(8, Math.floor(count) || 5));
+    if (!apiKeyOverride && !CONFIG.gemini.apiKey && !CONFIG.groq.apiKey) return localQuiz(chunks, count);
     const isGeneric = chunks.length === 0;
     const sampleChunks = isGeneric ? [] : chunks.slice(0, 8);
     const docTitle = isGeneric ? 'MCA Systems & Computer Science Fundamentals' : (chunks[0]?.documentTitle || 'Course Material');
@@ -193,6 +210,10 @@ Respond ONLY with valid JSON in this exact format:
       apiKeyOverride,
     });
 
+    if (response.provider === 'cognify-curriculum') {
+      return localQuiz(chunks, count);
+    }
+
     try {
       const cleaned = response.text.replace(/```json/g, '').replace(/```/g, '').trim();
       const parsed = JSON.parse(cleaned);
@@ -203,7 +224,7 @@ Respond ONLY with valid JSON in this exact format:
 
       for (let i = 0; i < rawQuestions.length; i++) {
         const q = rawQuestions[i];
-        if (!q.question || !Array.isArray(q.options) || q.options.length < 2) continue;
+        if (typeof q.question !== 'string' || !q.question.trim() || !Array.isArray(q.options) || q.options.length !== 4 || !['A', 'B', 'C', 'D'].includes(q.correctAnswer)) continue;
 
         // Ensure 4 options with keys A, B, C, D
         const formattedOptions = ['A', 'B', 'C', 'D'].map((key, optIdx) => {
@@ -215,7 +236,8 @@ Respond ONLY with valid JSON in this exact format:
           };
         });
 
-        const validAnswer = ['A', 'B', 'C', 'D'].includes(q.correctAnswer) ? q.correctAnswer : 'A';
+        if (formattedOptions.some(option => !option.text || /^Option [A-D]$/.test(option.text)) || new Set(formattedOptions.map(option => option.text.toLowerCase())).size !== 4) continue;
+        const validAnswer = q.correctAnswer;
 
         validated.push({
           id: `q_${Date.now()}_${i}`,

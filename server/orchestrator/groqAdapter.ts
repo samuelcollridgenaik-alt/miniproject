@@ -1,5 +1,6 @@
 import { LLMProvider, LLMProviderId, LLMRequestOptions, LLMResponse } from '../types.js';
 import { CONFIG } from '../config.js';
+import { checkedOutputLimit } from './usageLimits.js';
 import { executionLogger } from './executionLogger.js';
 
 export class GroqLlamaAdapter implements LLMProvider {
@@ -51,6 +52,7 @@ export class GroqLlamaAdapter implements LLMProvider {
   }
 
   public async generate(prompt: string, options?: LLMRequestOptions): Promise<LLMResponse> {
+    const outputLimit = checkedOutputLimit(prompt, options?.systemInstruction, options?.maxTokens);
     const startTime = Date.now();
     const requestId = options?.requestId || executionLogger.generateRequestId('groq');
     const key = options?.apiKeyOverride || CONFIG.groq.apiKey;
@@ -79,11 +81,9 @@ export class GroqLlamaAdapter implements LLMProvider {
       model: this.defaultModel,
       messages,
       temperature: options?.temperature ?? 0.3,
+      max_tokens: outputLimit,
     };
 
-    if (options?.maxTokens) {
-      payload.max_tokens = options.maxTokens;
-    }
 
     if (options?.jsonMode) {
       payload.response_format = { type: 'json_object' };

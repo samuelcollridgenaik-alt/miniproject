@@ -205,6 +205,8 @@ export const QuizView: React.FC<QuizViewProps> = ({
       if (customGroqKey) headers["x-groq-key"] = customGroqKey;
       if (preferredProvider)
         headers["x-preferred-provider"] = preferredProvider;
+      const userId = localStorage.getItem("cognify_user_id");
+      if (userId) headers["x-user-id"] = userId;
 
       const res = await fetch("/api/study/quiz", {
         method: "POST",
@@ -216,23 +218,12 @@ export const QuizView: React.FC<QuizViewProps> = ({
       });
 
       const data = await res.json();
-      if (!data.success) {
-        // Instead of hard error, fallback smoothly to preset curriculum
-        console.warn("Live generation fell back:", data.error);
-        setQuestions(PRESET_QUIZZES[0].questions);
-        setInfoNotice(
-          "Live generation was unavailable. Showing bundled practice questions, not questions generated from your document.",
-        );
-        return;
-      }
-
+      if (!res.ok || !data.success || !Array.isArray(data.data) || !data.data.length)
+        throw new Error(data.error || "No quiz questions were generated.");
       setQuestions(data.data);
+      setInfoNotice(`Generated ${data.data.length} question${data.data.length === 1 ? "" : "s"}. Offline questions test recall from your notes; review the source for context.`);
     } catch (err: any) {
-      console.warn("Network error during quiz gen:", err.message);
-      setQuestions(PRESET_QUIZZES[0].questions);
-      setInfoNotice(
-        "Could not reach quiz generation. Showing bundled practice questions.",
-      );
+      setInfoNotice(err.message || "Could not generate a quiz. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -247,7 +238,7 @@ export const QuizView: React.FC<QuizViewProps> = ({
   };
 
   const handleSubmitQuiz = async () => {
-    if (Object.keys(userAnswers).length < questions.length) {
+    if (!questions.length || questions.some(q => !userAnswers[q.id])) {
       setInfoNotice(
         "Answer each question before submitting. Unanswered questions are never automatically assigned an option.",
       );
@@ -266,9 +257,12 @@ export const QuizView: React.FC<QuizViewProps> = ({
     }));
 
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const userId = localStorage.getItem("cognify_user_id");
+      if (userId) headers["x-user-id"] = userId;
       const res = await fetch("/api/quiz/submit", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           quizTitle: selectedDocId
             ? documents.find((d) => d.id === selectedDocId)?.title ||

@@ -61,9 +61,14 @@ function getAuthUser(req: Request) {
   return storage.getCurrentUser();
 }
 
+function ownsDocument(req: Request, documentId: string): boolean {
+  const user = getAuthUser(req);
+  return storage.getDocuments(user.id).some((doc) => doc.id === documentId && doc.userId === user.id);
+}
+
 function sanitizeUser(user: any) {
   if (!user) return user;
-  const { password, ...safe } = user;
+  const { password, geminiApiKey, groqApiKey, ...safe } = user;
   const hasGeminiKey = !!(user.geminiApiKey && user.geminiApiKey.trim() !== '');
   const hasGroqKey = !!(user.groqApiKey && user.groqApiKey.trim() !== '');
   return {
@@ -106,7 +111,7 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
     });
   }
 
-  if (user.password && password && user.password !== password) {
+  if (!password || !user.password || user.password !== password) {
     return res.status(401).json({ success: false, error: 'Incorrect password. Please try again.' });
   }
 
@@ -356,6 +361,9 @@ app.post('/api/documents/text', async (req: Request, res: Response) => {
 
 app.delete('/api/documents/:id', (req: Request, res: Response) => {
   const { id } = req.params;
+  if (!ownsDocument(req, id)) {
+    return res.status(404).json({ success: false, error: 'Document not found.' });
+  }
   storage.removeDocument(id);
   vectorStore.removeDocument(id);
   res.json({ success: true, message: `Document ${id} and associated chunks deleted.` });
@@ -420,6 +428,8 @@ app.post('/api/tutor/ask', async (req: Request, res: Response) => {
   try {
     const user = getAuthUser(req);
     const { question, documentIdFilter, preferredProvider } = req.body;
+    if (documentIdFilter && !ownsDocument(req, documentIdFilter)) return res.status(404).json({ success: false, error: 'Document not found.' });
+    const targetDocumentId = documentIdFilter || storage.getDocuments(user.id).find((doc) => doc.userId === user.id)?.id;
     const effectiveGeminiKey = (req.headers['x-gemini-key'] as string) || req.body?.geminiApiKey || user?.geminiApiKey;
     const effectiveProvider = (req.headers['x-preferred-provider'] as any) || preferredProvider || 'gemini';
 
@@ -428,7 +438,7 @@ app.post('/api/tutor/ask', async (req: Request, res: Response) => {
     }
 
     const answer = await ragPipeline.answerGroundedQuestion(question, {
-      documentIdFilter,
+      documentIdFilter: targetDocumentId || '__no_document__',
       preferredProvider: effectiveProvider,
       apiKeyOverride: effectiveGeminiKey,
     });
@@ -444,6 +454,7 @@ app.post('/api/study/summary', async (req: Request, res: Response) => {
   try {
     const user = getAuthUser(req);
     const { documentId } = req.body;
+    if (documentId && !ownsDocument(req, documentId)) return res.status(404).json({ success: false, error: 'Document not found.' });
     const effectiveGeminiKey = (req.headers['x-gemini-key'] as string) || req.body?.geminiApiKey || user?.geminiApiKey;
     const userDocs = storage.getDocuments(user?.id);
     const targetDocId = documentId || (userDocs.length > 0 ? userDocs[0].id : undefined);
@@ -462,6 +473,7 @@ app.post('/api/study/flashcards', async (req: Request, res: Response) => {
   try {
     const user = getAuthUser(req);
     const { documentId, count } = req.body;
+    if (documentId && !ownsDocument(req, documentId)) return res.status(404).json({ success: false, error: 'Document not found.' });
     const effectiveGeminiKey = (req.headers['x-gemini-key'] as string) || req.body?.geminiApiKey || user?.geminiApiKey;
     const userDocs = storage.getDocuments(user?.id);
     const targetDocId = documentId || (userDocs.length > 0 ? userDocs[0].id : undefined);
@@ -480,8 +492,10 @@ app.post('/api/study/quiz', async (req: Request, res: Response) => {
   try {
     const user = getAuthUser(req);
     const { documentId, count } = req.body;
+    if (documentId && !ownsDocument(req, documentId)) return res.status(404).json({ success: false, error: 'Document not found.' });
     const effectiveGeminiKey = (req.headers['x-gemini-key'] as string) || req.body?.geminiApiKey || user?.geminiApiKey;
-    const questions = await studyMaterialService.generateQuiz(documentId, count || 5, effectiveGeminiKey);
+    const targetDocumentId = documentId || storage.getDocuments(user.id).find((doc) => doc.userId === user.id)?.id;
+    const questions = await studyMaterialService.generateQuiz(targetDocumentId || '__no_document__', count || 5, effectiveGeminiKey);
     res.json({ success: true, data: questions });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -517,11 +531,13 @@ app.post('/api/models/compare', async (req: Request, res: Response) => {
   try {
     const user = getAuthUser(req);
     const { question, documentIdFilter } = req.body;
+    if (documentIdFilter && !ownsDocument(req, documentIdFilter)) return res.status(404).json({ success: false, error: 'Document not found.' });
+    const targetDocumentId = documentIdFilter || storage.getDocuments(user.id).find((doc) => doc.userId === user.id)?.id;
     if (!question) {
       return res.status(400).json({ success: false, error: 'Question is required for comparison.' });
     }
 
-    const comparison = await comparisonService.compareModels(question, documentIdFilter, {
+    const comparison = await comparisonService.compareModels(question, targetDocumentId || '__no_document__', {
       gemini: user.geminiApiKey,
       groq: user.groqApiKey,
     });
@@ -541,6 +557,10 @@ app.post('/api/quiz/submit', (req: Request, res: Response) => {
     const { quizTitle, documentId, items } = req.body;
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, error: 'Quiz items are required.' });
+    }
+    const validKeys = ['A', 'B', 'C', 'D'];
+    if (items.length > 100 || items.some((item: any) => !item || typeof item.questionId !== 'string' || !item.questionId || !validKeys.includes(item.selectedAnswer) || !validKeys.includes(item.correctAnswer) || (item.topicTag != null && typeof item.topicTag !== 'string')) || new Set(items.map((item: any) => item.questionId)).size !== items.length) {
+      return res.status(400).json({ success: false, error: 'Quiz answers are invalid or incomplete.' });
     }
 
     let score = 0;
@@ -603,12 +623,12 @@ app.post('/api/quiz/submit', (req: Request, res: Response) => {
 app.get('/api/analytics/mastery', (req: Request, res: Response) => {
   const user = getAuthUser(req);
   const masteries = analyticsService.calculateTopicMastery(user?.id);
-  const stats = analyticsService.getOverallStatistics();
+  const stats = analyticsService.getOverallStatistics(user?.id);
   res.json({
     success: true,
     data: {
       topicMasteries: masteries,
-      weakTopics: analyticsService.getWeakTopics(),
+      weakTopics: analyticsService.getWeakTopics(user?.id),
       overall: stats,
     },
   });

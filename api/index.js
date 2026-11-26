@@ -59,6 +59,16 @@ var CONFIG = {
 // server/orchestrator/geminiAdapter.ts
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 
+// server/orchestrator/usageLimits.ts
+var MAX_PROMPT_CHARACTERS = 24e3;
+var MAX_OUTPUT_TOKENS = 2048;
+function checkedOutputLimit(prompt, systemInstruction, requested) {
+  if (prompt.length + (systemInstruction?.length || 0) > MAX_PROMPT_CHARACTERS) {
+    throw new Error("The request is too long. Shorten the question or source material and try again.");
+  }
+  return Number.isFinite(requested) && requested > 0 ? Math.min(Math.floor(requested), MAX_OUTPUT_TOKENS) : MAX_OUTPUT_TOKENS;
+}
+
 // server/orchestrator/executionLogger.ts
 var ExecutionLogger = class {
   constructor() {
@@ -187,6 +197,7 @@ var GeminiAdapter = class {
     }
   }
   async generate(prompt, options) {
+    const outputLimit = checkedOutputLimit(prompt, options?.systemInstruction, options?.maxTokens);
     const startTime = Date.now();
     const requestId = options?.requestId || executionLogger.generateRequestId("gemini");
     if (!this.isConfigured(options?.apiKeyOverride)) {
@@ -207,7 +218,7 @@ var GeminiAdapter = class {
       throw new Error("Gemini client unavailable");
     }
     try {
-      const config = {};
+      const config = { maxOutputTokens: outputLimit };
       if (options?.systemInstruction) {
         config.systemInstruction = options.systemInstruction;
       }
@@ -339,6 +350,7 @@ var GroqLlamaAdapter = class {
     }
   }
   async generate(prompt, options) {
+    const outputLimit = checkedOutputLimit(prompt, options?.systemInstruction, options?.maxTokens);
     const startTime = Date.now();
     const requestId = options?.requestId || executionLogger.generateRequestId("groq");
     const key = options?.apiKeyOverride || CONFIG.groq.apiKey;
@@ -363,11 +375,9 @@ var GroqLlamaAdapter = class {
     const payload = {
       model: this.defaultModel,
       messages,
-      temperature: options?.temperature ?? 0.3
+      temperature: options?.temperature ?? 0.3,
+      max_tokens: outputLimit
     };
-    if (options?.maxTokens) {
-      payload.max_tokens = options.maxTokens;
-    }
     if (options?.jsonMode) {
       payload.response_format = { type: "json_object" };
     }
@@ -1387,11 +1397,11 @@ var VectorStore = class {
     const topResults = scored.slice(0, topK);
     return topResults.map(({ chunk, similarity }) => {
       const pageOrSlideLabel = chunk.pageOrSlideNumber ? chunk.documentTitle.toLowerCase().includes("slide") || chunk.documentTitle.toLowerCase().includes("ppt") ? `Slide ${chunk.pageOrSlideNumber}` : `Page ${chunk.pageOrSlideNumber}` : `Chunk #${chunk.chunkIndex + 1}`;
-      const citation = `[Doc: "${chunk.documentTitle}", ${pageOrSlideLabel}]`;
+      const citation2 = `[Doc: "${chunk.documentTitle}", ${pageOrSlideLabel}]`;
       return {
         chunk,
         similarityScore: Math.round(similarity * 1e3) / 1e3,
-        citation
+        citation: citation2
       };
     });
   }
@@ -1402,6 +1412,28 @@ var VectorStore = class {
   }
 };
 var vectorStore = new VectorStore();
+
+// server/rag/localNotes.ts
+function localNotesAnswer(results, threshold, question = "") {
+  const relevant = results.filter((result) => result.similarityScore >= threshold);
+  if (!relevant.length) {
+    return "I could not find a sufficiently relevant passage in your notes. Try a more specific question or upload relevant material.";
+  }
+  const stopWords = /* @__PURE__ */ new Set(["what", "when", "where", "which", "who", "why", "how", "the", "and", "for", "with", "from", "between", "difference", "explain", "about", "does", "are", "is", "can", "please"]);
+  const terms = new Set((question.toLowerCase().match(/[a-z0-9]+/g) || []).filter((word) => word.length > 1 && !stopWords.has(word)));
+  const excerpt = (text) => {
+    const sentences = text.trim().match(/[^.!?\n]+(?:[.!?]+|$)/g) || [text.trim()];
+    const matching = sentences.filter((sentence) => (sentence.toLowerCase().match(/[a-z0-9]+/g) || []).some((word) => terms.has(word)));
+    return (matching.length ? matching : sentences).map((s) => s.trim()).join(" ");
+  };
+  return [
+    "### Relevant passages from your notes",
+    "This offline response extracts source text; it does not generate an explanation. Check the original notes for context.",
+    ...relevant.map((result) => `**${result.citation}**
+
+${excerpt(result.chunk.text)}`)
+  ].join("\n\n");
+}
 
 // server/rag/ragPipeline.ts
 var RagPipeline = class {
@@ -1431,6 +1463,20 @@ Provide an encouraging, clear, and structured academic explanation. Include an i
           preferredProvider: providerId,
           apiKeyOverride: options?.apiKeyOverride
         });
+        if (llmResponse.provider === "cognify-curriculum") {
+          return {
+            requestId: llmResponse.requestId,
+            provider: llmResponse.provider,
+            model: "cognify-local-extractive-v1",
+            latencyMs: llmResponse.latencyMs,
+            question,
+            answer: localNotesAnswer([], CONFIG.rag.minSimilarityThreshold),
+            isSufficientlyGrounded: false,
+            groundingConfidence: 0,
+            citations: [],
+            retrievedChunksCount: results.length
+          };
+        }
         return {
           requestId: llmResponse.requestId,
           provider: llmResponse.provider,
@@ -1441,7 +1487,7 @@ Provide an encouraging, clear, and structured academic explanation. Include an i
 
 ${llmResponse.text}`,
           isSufficientlyGrounded: false,
-          groundingConfidence: results.length > 0 ? Math.round(maxScore * 100) / 100 : 0.5,
+          groundingConfidence: results.length > 0 ? Math.round(maxScore * 100) / 100 : 0,
           citations: results.map((r) => ({
             source: r.chunk.documentTitle,
             pageOrSlide: r.chunk.pageOrSlideNumber,
@@ -1494,16 +1540,18 @@ Provide a comprehensive, accurate academic answer grounded strictly in these exc
         temperature: 0.2,
         apiKeyOverride: options?.apiKeyOverride
       });
+      const local = llmResponse.provider === "cognify-curriculum";
+      const citedResults = local ? results.filter((r) => r.similarityScore >= CONFIG.rag.minSimilarityThreshold) : results;
       return {
         requestId: llmResponse.requestId,
         provider: llmResponse.provider,
-        model: llmResponse.model,
+        model: local ? "cognify-local-extractive-v1" : llmResponse.model,
         latencyMs: llmResponse.latencyMs,
         question,
-        answer: llmResponse.text,
+        answer: local ? localNotesAnswer(citedResults, CONFIG.rag.minSimilarityThreshold, question) : llmResponse.text,
         isSufficientlyGrounded: true,
         groundingConfidence: Math.min(1, Math.round((maxScore + 0.15) * 100) / 100),
-        citations: results.map((r) => ({
+        citations: citedResults.map((r) => ({
           source: r.chunk.documentTitle,
           pageOrSlide: r.chunk.pageOrSlideNumber,
           quoteSnippet: r.chunk.text.substring(0, 160) + "...",
@@ -1741,6 +1789,89 @@ var StorageService = class {
 };
 var storage = new StorageService();
 
+// server/workflows/localStudyMaterial.ts
+import { randomUUID, randomInt } from "node:crypto";
+function passages(chunks) {
+  const seen = /* @__PURE__ */ new Set();
+  return chunks.flatMap((chunk) => (chunk.text.match(/[^.!?\n]+(?:[.!?]+|$)/g) || []).map((text) => ({ text: text.trim(), chunk }))).filter(({ text }) => {
+    const key = text.toLowerCase();
+    if (text.length < 30 || text.length > 500 || /^[a-z]/.test(text) || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+var citation = (chunk) => `[Doc: "${chunk.documentTitle}", ${chunk.pageOrSlideNumber ? `Page/Section ${chunk.pageOrSlideNumber}` : `Chunk ${chunk.chunkIndex + 1}`}]`;
+function localFlashcards(chunks, count) {
+  const stop = /* @__PURE__ */ new Set(["this", "that", "these", "those", "with", "from", "which", "where", "when", "their", "there", "using", "about", "other", "into", "than", "then", "each", "also", "such", "have", "will", "been", "they", "your", "some"]);
+  const cards = [];
+  for (const { text, chunk } of passages(chunks)) {
+    const words = text.match(/\b[A-Za-z][A-Za-z0-9-]{3,}\b/g) || [];
+    const term = words.find((word) => !stop.has(word.toLowerCase()));
+    if (!term) continue;
+    const index = text.indexOf(term);
+    cards.push({ id: `local_${cards.length}`, front: `Complete the sentence: ${text.slice(0, index)}[ \u2026 ]${text.slice(index + term.length)}`, back: `${term}
+
+${text}`, topicTag: chunk.documentTitle, citation: citation(chunk) });
+    if (cards.length >= count) break;
+  }
+  if (!cards.length) throw new Error("No suitable sentences were found. Add readable text to your notes and try again.");
+  return cards;
+}
+function localSummary(chunks) {
+  const selected = passages(chunks).slice(0, 8);
+  if (!selected.length) throw new Error("No suitable sentences were found. Add readable text to your notes and try again.");
+  const title = chunks[0].documentTitle;
+  return {
+    title: `Extracts from ${title}`,
+    documentTitle: title,
+    overview: "Selected passages from your notes. These are extracts, not an AI-written summary.",
+    coreConcepts: selected.map(({ text, chunk }, i) => ({ concept: `Passage ${i + 1}`, explanation: text, citation: citation(chunk) })),
+    formulasOrRules: [],
+    examFocusPoints: []
+  };
+}
+function localQuiz(chunks, count) {
+  const cards = localFlashcards(chunks, 1e3);
+  const terms = [...new Map(cards.map((card) => {
+    const term = card.back.split("\n")[0];
+    return [term.toLowerCase(), term];
+  })).values()];
+  if (terms.length < 4) throw new Error("These notes need at least four distinct terms in readable sentences to create a quiz.");
+  const shuffle = (values) => {
+    const copy = [...values];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = randomInt(i + 1);
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  };
+  const used = /* @__PURE__ */ new Set();
+  const eligible = shuffle(cards).filter((card) => {
+    const term = card.back.split("\n")[0].toLowerCase();
+    const visibleWords = new Set(card.front.toLowerCase().match(/[a-z0-9-]+/g) || []);
+    if (used.has(term) || visibleWords.has(term) || terms.filter((t) => !visibleWords.has(t.toLowerCase()) && t.toLowerCase() !== term).length < 3) return false;
+    used.add(term);
+    return true;
+  });
+  if (!eligible.length) throw new Error("The notes do not have enough distinct terms for unambiguous recall questions. Add more notes and try again.");
+  return eligible.slice(0, count).map((card) => {
+    const answer = card.back.split("\n")[0];
+    const visibleWords = new Set(card.front.toLowerCase().match(/[a-z0-9-]+/g) || []);
+    const choices = shuffle([answer, ...shuffle(terms.filter((term) => term.toLowerCase() !== answer.toLowerCase() && !visibleWords.has(term.toLowerCase()))).slice(0, 3)]);
+    const keys = ["A", "B", "C", "D"];
+    return {
+      id: randomUUID(),
+      question: card.front,
+      options: choices.map((text, i) => ({ key: keys[i], text })),
+      correctAnswer: keys[choices.indexOf(answer)],
+      explanation: `Original note: ${card.back.split("\n\n").slice(1).join("\n\n")}`,
+      topicTag: card.topicTag,
+      difficulty: "easy",
+      citation: card.citation
+    };
+  });
+}
+
 // server/workflows/studyMaterialService.ts
 var StudyMaterialService = class {
   /**
@@ -1748,6 +1879,8 @@ var StudyMaterialService = class {
    */
   async generateSummary(documentId, apiKeyOverride) {
     let chunks = documentId ? vectorStore.getDocumentChunks(documentId) : vectorStore.getAllChunks();
+    if (!chunks.length) throw new Error("Add course notes before generating a digest.");
+    if (!apiKeyOverride && !CONFIG.gemini.apiKey && !CONFIG.groq.apiKey) return localSummary(chunks);
     const isGeneric = chunks.length === 0;
     const sampleChunks = isGeneric ? [] : chunks.slice(0, 10);
     const docTitle = isGeneric ? "MCA Systems & Computer Science Fundamentals" : chunks[0].documentTitle;
@@ -1780,6 +1913,9 @@ Respond ONLY with valid JSON in this exact structure:
       temperature: 0.2,
       apiKeyOverride
     });
+    if (response.provider === "cognify-curriculum") {
+      return localSummary(chunks);
+    }
     try {
       const cleaned = response.text.replace(/```json/g, "").replace(/```/g, "").trim();
       const parsed = JSON.parse(cleaned);
@@ -1802,6 +1938,8 @@ Respond ONLY with valid JSON in this exact structure:
    */
   async generateFlashcards(documentId, count = 8, apiKeyOverride) {
     let chunks = documentId ? vectorStore.getDocumentChunks(documentId) : vectorStore.getAllChunks();
+    if (!chunks.length) throw new Error("Add course notes before generating flashcards.");
+    if (!apiKeyOverride && !CONFIG.gemini.apiKey && !CONFIG.groq.apiKey) return localFlashcards(chunks, count);
     const isGeneric = chunks.length === 0;
     const sampleChunks = isGeneric ? [] : chunks.slice(0, 10);
     const docTitle = isGeneric ? "MCA Systems & Computer Science Fundamentals" : chunks[0].documentTitle;
@@ -1832,6 +1970,9 @@ Respond ONLY with valid JSON in this exact structure:
       temperature: 0.2,
       apiKeyOverride
     });
+    if (response.provider === "cognify-curriculum") {
+      return localFlashcards(chunks, count);
+    }
     try {
       const cleaned = response.text.replace(/```json/g, "").replace(/```/g, "").trim();
       const data = JSON.parse(cleaned);
@@ -1852,6 +1993,9 @@ Respond ONLY with valid JSON in this exact structure:
    */
   async generateQuiz(documentId, count = 5, apiKeyOverride) {
     let chunks = documentId ? vectorStore.getDocumentChunks(documentId) : vectorStore.getAllChunks();
+    if (!chunks.length) throw new Error("Add course notes before generating a quiz.");
+    count = Math.max(1, Math.min(8, Math.floor(count) || 5));
+    if (!apiKeyOverride && !CONFIG.gemini.apiKey && !CONFIG.groq.apiKey) return localQuiz(chunks, count);
     const isGeneric = chunks.length === 0;
     const sampleChunks = isGeneric ? [] : chunks.slice(0, 8);
     const docTitle = isGeneric ? "MCA Systems & Computer Science Fundamentals" : chunks[0]?.documentTitle || "Course Material";
@@ -1895,6 +2039,9 @@ Respond ONLY with valid JSON in this exact format:
       temperature: 0.2,
       apiKeyOverride
     });
+    if (response.provider === "cognify-curriculum") {
+      return localQuiz(chunks, count);
+    }
     try {
       const cleaned = response.text.replace(/```json/g, "").replace(/```/g, "").trim();
       const parsed = JSON.parse(cleaned);
@@ -1902,7 +2049,7 @@ Respond ONLY with valid JSON in this exact format:
       const validated = [];
       for (let i = 0; i < rawQuestions.length; i++) {
         const q = rawQuestions[i];
-        if (!q.question || !Array.isArray(q.options) || q.options.length < 2) continue;
+        if (typeof q.question !== "string" || !q.question.trim() || !Array.isArray(q.options) || q.options.length !== 4 || !["A", "B", "C", "D"].includes(q.correctAnswer)) continue;
         const formattedOptions = ["A", "B", "C", "D"].map((key, optIdx) => {
           const opt = q.options[optIdx];
           const text = opt ? typeof opt === "string" ? opt : opt.text || `Option ${key}` : `Option ${key}`;
@@ -1911,7 +2058,8 @@ Respond ONLY with valid JSON in this exact format:
             text: text.replace(/^[A-D][.):\s]+/, "").trim()
           };
         });
-        const validAnswer = ["A", "B", "C", "D"].includes(q.correctAnswer) ? q.correctAnswer : "A";
+        if (formattedOptions.some((option) => !option.text || /^Option [A-D]$/.test(option.text)) || new Set(formattedOptions.map((option) => option.text.toLowerCase())).size !== 4) continue;
+        const validAnswer = q.correctAnswer;
         validated.push({
           id: `q_${Date.now()}_${i}`,
           question: q.question,
@@ -2153,11 +2301,11 @@ var AnalyticsService = class {
     }
     return masteries.sort((a, b) => a.masteryPercentage - b.masteryPercentage);
   }
-  getWeakTopics() {
-    return this.calculateTopicMastery().filter((m) => m.classification === "weak");
+  getWeakTopics(userId) {
+    return this.calculateTopicMastery(userId).filter((m) => m.classification === "weak");
   }
-  getOverallStatistics() {
-    const attempts = storage.getQuizAttempts();
+  getOverallStatistics(userId) {
+    const attempts = storage.getQuizAttempts(userId);
     const totalQuizzes = attempts.length;
     let totalQuestionsAttempted = 0;
     let totalCorrect = 0;
@@ -2166,7 +2314,7 @@ var AnalyticsService = class {
       totalCorrect += a.score;
     }
     const overallAccuracy = totalQuestionsAttempted > 0 ? Math.round(totalCorrect / totalQuestionsAttempted * 100) : 0;
-    const topicMasteries = this.calculateTopicMastery();
+    const topicMasteries = this.calculateTopicMastery(userId);
     const weakCount = topicMasteries.filter((t) => t.classification === "weak").length;
     const masteredCount = topicMasteries.filter((t) => t.classification === "mastered").length;
     return {
@@ -2643,7 +2791,7 @@ function getAuthUser(req) {
 }
 function sanitizeUser(user) {
   if (!user) return user;
-  const { password, ...safe } = user;
+  const { password, geminiApiKey, groqApiKey, ...safe } = user;
   const hasGeminiKey = !!(user.geminiApiKey && user.geminiApiKey.trim() !== "");
   const hasGroqKey = !!(user.groqApiKey && user.groqApiKey.trim() !== "");
   return {
@@ -2674,7 +2822,7 @@ app.post("/api/auth/login", (req, res) => {
       error: `No user account found for ${email}. Please create an account in the Register tab.`
     });
   }
-  if (user.password && password && user.password !== password) {
+  if (!password || !user.password || user.password !== password) {
     return res.status(401).json({ success: false, error: "Incorrect password. Please try again." });
   }
   storage.setCurrentUser(user.id);
@@ -3032,6 +3180,10 @@ app.post("/api/quiz/submit", (req, res) => {
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, error: "Quiz items are required." });
     }
+    const validKeys = ["A", "B", "C", "D"];
+    if (items.length > 100 || items.some((item) => !item || typeof item.questionId !== "string" || !item.questionId || !validKeys.includes(item.selectedAnswer) || !validKeys.includes(item.correctAnswer) || item.topicTag != null && typeof item.topicTag !== "string") || new Set(items.map((item) => item.questionId)).size !== items.length) {
+      return res.status(400).json({ success: false, error: "Quiz answers are invalid or incomplete." });
+    }
     let score = 0;
     const topicBreakdown = {};
     const processedItems = items.map((item) => {
@@ -3083,12 +3235,12 @@ app.post("/api/quiz/submit", (req, res) => {
 app.get("/api/analytics/mastery", (req, res) => {
   const user = getAuthUser(req);
   const masteries = analyticsService.calculateTopicMastery(user?.id);
-  const stats = analyticsService.getOverallStatistics();
+  const stats = analyticsService.getOverallStatistics(user?.id);
   res.json({
     success: true,
     data: {
       topicMasteries: masteries,
-      weakTopics: analyticsService.getWeakTopics(),
+      weakTopics: analyticsService.getWeakTopics(user?.id),
       overall: stats
     }
   });

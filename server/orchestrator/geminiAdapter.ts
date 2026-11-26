@@ -1,6 +1,7 @@
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { LLMProvider, LLMProviderId, LLMRequestOptions, LLMResponse } from '../types.js';
 import { CONFIG } from '../config.js';
+import { checkedOutputLimit } from './usageLimits.js';
 import { executionLogger } from './executionLogger.js';
 
 export class GeminiAdapter implements LLMProvider {
@@ -86,6 +87,7 @@ export class GeminiAdapter implements LLMProvider {
   }
 
   public async generate(prompt: string, options?: LLMRequestOptions): Promise<LLMResponse> {
+    const outputLimit = checkedOutputLimit(prompt, options?.systemInstruction, options?.maxTokens);
     const startTime = Date.now();
     const requestId = options?.requestId || executionLogger.generateRequestId('gemini');
 
@@ -109,7 +111,7 @@ export class GeminiAdapter implements LLMProvider {
     }
 
     try {
-      const config: any = {};
+      const config: any = { maxOutputTokens: outputLimit };
       if (options?.systemInstruction) {
         config.systemInstruction = options.systemInstruction;
       }

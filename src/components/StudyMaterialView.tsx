@@ -267,8 +267,8 @@ export const StudyMaterialView: React.FC<StudyMaterialViewProps> = ({
 
       <p className="text-xs text-muted">
         Initial cards are bundled practice material. Generate cards to use the
-        selected course notes. Reference labels are not independent
-        verification.
+        selected course notes. Offline cards use fill-in-the-blank excerpts;
+        check the source for context.
       </p>
       {flashcards.length > 0 &&
         Object.keys(confidenceRatings).length === flashcards.length && (
