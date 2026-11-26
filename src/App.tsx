@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { NavTabId } from "./components/NotionSidebar.js";
 import { CommandPalette } from "./components/CommandPalette.js";
 import { LoginPage } from "./components/LoginPage.js";
+import { authClient } from "./auth.js";
 import { Workspace } from "./components/Workspace.js";
 import { DocumentsView } from "./components/DocumentsView.js";
 import { StudyMaterialView } from "./components/StudyMaterialView.js";
@@ -128,6 +129,15 @@ export default function App() {
 
   const fetchCurrentUser = async () => {
     try {
+      if (import.meta.env?.PROD) {
+        const session = await authClient.getSession();
+        const token = session.data?.session?.token;
+        if (!token) { setCurrentUser(null); return null; }
+        const response = await fetch('/api/auth/session', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }),
+        });
+        if (!response.ok) { setCurrentUser(null); return null; }
+      }
       const savedUserId = localStorage.getItem("cognify_user_id") || "";
       const headers: Record<string, string> = {};
       if (savedUserId) headers["x-user-id"] = savedUserId;
@@ -173,6 +183,10 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    if (import.meta.env?.PROD) {
+      void authClient.signOut();
+      void fetch('/api/auth/logout', { method: 'POST' });
+    }
     localStorage.removeItem("cognify_user_id");
     localStorage.removeItem("cognify_auth_token");
     setCurrentUser(null);

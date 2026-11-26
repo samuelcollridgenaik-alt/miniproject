@@ -1,6 +1,7 @@
 import { useOverlayFocus } from "../hooks/useOverlayFocus.js";
 import React, { useState, useEffect } from "react";
 import { UserProfile } from "../types.js";
+import { authClient } from "../auth.js";
 import {
   BrainCircuit,
   Key,
@@ -28,7 +29,7 @@ interface LoginPageProps {
   onCloseModal?: () => void;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({
+const LegacyLoginPage: React.FC<LoginPageProps> = ({
   currentUser,
   onLoginSuccess,
   onLogout,
@@ -73,6 +74,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+
 
   // Safe JSON parsing helper to prevent Unexpected Token errors on HTML 404/500 responses
   const parseJson = async (res: Response) => {
@@ -1015,3 +1017,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     </div>
   );
 };
+
+export const LoginPage: React.FC<LoginPageProps> = (props) => import.meta.env?.PROD ? (
+  <main style={{ maxWidth: 480, margin: '12vh auto', padding: 32 }}>
+    <h1>Cognify AI</h1>
+    <p>Sign in to study your notes securely.</p>
+    <button type="button" onClick={() => authClient.signIn.social({ provider: 'google', callbackURL: window.location.origin })}>
+      Continue with Google
+    </button>
+  </main>
+) : <LegacyLoginPage {...props} />;

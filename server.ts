@@ -13,6 +13,7 @@ import { documentChunker } from './server/rag/chunker.js';
 import { vectorStore } from './server/rag/vectorStore.js';
 import { ragPipeline } from './server/rag/ragPipeline.js';
 import { storage } from './server/storage/db.js';
+import { verifiedUser } from './server/auth/session.js';
 import { studyMaterialService } from './server/workflows/studyMaterialService.js';
 import { reviewService } from './server/workflows/reviewService.js';
 import { comparisonService } from './server/workflows/comparisonService.js';
@@ -48,11 +49,53 @@ const upload = multer({
   limits: { fileSize: 25 * 1024 * 1024 }, // 25MB
 });
 
+app.post('/api/auth/session', async (req: Request, res: Response) => {
+  try {
+    const token = typeof req.body?.token === 'string' ? req.body.token : '';
+    const user = await verifiedUser(token);
+    if (!user) return res.status(401).json({ success: false, error: 'Invalid session.' });
+    res.cookie('cognify_session', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 });
+    res.json({ success: true, user });
+  } catch {
+    res.status(503).json({ success: false, error: 'Authentication unavailable.' });
+  }
+});
+
+app.post('/api/auth/logout', (_req: Request, res: Response) => {
+  res.clearCookie('cognify_session', { path: '/' });
+  res.json({ success: true });
+});
+
+app.use('/api', async (req: Request, res: Response, next) => {
+  if (!process.env.DATABASE_URL) {
+    if (process.env.VERCEL) return res.status(503).json({ success: false, error: 'Database unavailable.' });
+    return next();
+  }
+  try {
+    const token = /(?:^|;\s*)cognify_session=([^;]+)/.exec(req.headers.cookie || '')?.[1];
+    const user = token ? await verifiedUser(decodeURIComponent(token)) : null;
+    if (!user) return res.status(401).json({ success: false, error: 'Sign in required.' });
+    (req as Request & { authUser: typeof user }).authUser = user;
+    next();
+  } catch {
+    res.status(503).json({ success: false, error: 'Authentication unavailable.' });
+  }
+});
+
+app.use('/api/auth', (req: Request, res: Response, next) => {
+  if (process.env.DATABASE_URL && ['/login', '/register', '/switch', '/keys', '/test-key'].includes(req.path)) {
+    return res.status(410).json({ success: false, error: 'Use Google sign-in.' });
+  }
+  next();
+});
+
 // ----------------------------------------------------
 // 0. AUTHENTICATION & MULTI-USER MANAGEMENT WITH API KEYS
 // ----------------------------------------------------
 
 function getAuthUser(req: Request) {
+  const verified = (req as Request & { authUser?: ReturnType<typeof storage.getCurrentUser> }).authUser;
+  if (verified) return verified;
   const userId = (req.headers['x-user-id'] as string) || (req.query.userId as string);
   if (userId) {
     const user = storage.getUserById(userId);
@@ -92,6 +135,9 @@ app.get('/api/auth/me', (req: Request, res: Response) => {
 
 // List all registered users (for user switcher)
 app.get('/api/auth/users', (_req: Request, res: Response) => {
+  if (process.env.DATABASE_URL && getAuthUser(_req).role !== 'faculty') {
+    return res.status(403).json({ success: false, error: 'Administrator access required.' });
+  }
   const users = storage.getUsers().map(sanitizeUser);
   res.json({ success: true, users });
 });

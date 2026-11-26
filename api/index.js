@@ -1789,6 +1789,30 @@ var StorageService = class {
 };
 var storage = new StorageService();
 
+// server/auth/session.ts
+import { neon } from "@neondatabase/serverless";
+async function verifiedUser(token) {
+  if (!process.env.DATABASE_URL || !token || token.length > 512) return null;
+  const sql = neon(process.env.DATABASE_URL);
+  const rows = await sql`
+    SELECT u.id, u.name, u.email, u.image, u."createdAt", u."emailVerified"
+    FROM neon_auth.session s
+    JOIN neon_auth."user" u ON u.id = s."userId"
+    WHERE s.token = ${token} AND s."expiresAt" > now() AND u.banned IS NOT TRUE
+    LIMIT 1
+  `;
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    avatarUrl: row.image || void 0,
+    role: row.email === "samuelcollridgenaik@gmail.com" && row.emailVerified ? "faculty" : "student",
+    createdAt: new Date(row.createdAt).toISOString()
+  };
+}
+
 // server/workflows/localStudyMaterial.ts
 import { randomUUID, randomInt } from "node:crypto";
 function passages(chunks) {
@@ -2781,13 +2805,55 @@ var upload = multer({
   limits: { fileSize: 25 * 1024 * 1024 }
   // 25MB
 });
+app.post("/api/auth/session", async (req, res) => {
+  try {
+    const token = typeof req.body?.token === "string" ? req.body.token : "";
+    const user = await verifiedUser(token);
+    if (!user) return res.status(401).json({ success: false, error: "Invalid session." });
+    res.cookie("cognify_session", token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 7 * 24 * 60 * 60 * 1e3 });
+    res.json({ success: true, user });
+  } catch {
+    res.status(503).json({ success: false, error: "Authentication unavailable." });
+  }
+});
+app.post("/api/auth/logout", (_req, res) => {
+  res.clearCookie("cognify_session", { path: "/" });
+  res.json({ success: true });
+});
+app.use("/api", async (req, res, next) => {
+  if (!process.env.DATABASE_URL) {
+    if (process.env.VERCEL) return res.status(503).json({ success: false, error: "Database unavailable." });
+    return next();
+  }
+  try {
+    const token = /(?:^|;\s*)cognify_session=([^;]+)/.exec(req.headers.cookie || "")?.[1];
+    const user = token ? await verifiedUser(decodeURIComponent(token)) : null;
+    if (!user) return res.status(401).json({ success: false, error: "Sign in required." });
+    req.authUser = user;
+    next();
+  } catch {
+    res.status(503).json({ success: false, error: "Authentication unavailable." });
+  }
+});
+app.use("/api/auth", (req, res, next) => {
+  if (process.env.DATABASE_URL && ["/login", "/register", "/switch", "/keys", "/test-key"].includes(req.path)) {
+    return res.status(410).json({ success: false, error: "Use Google sign-in." });
+  }
+  next();
+});
 function getAuthUser(req) {
+  const verified = req.authUser;
+  if (verified) return verified;
   const userId = req.headers["x-user-id"] || req.query.userId;
   if (userId) {
     const user = storage.getUserById(userId);
     if (user) return user;
   }
   return storage.getCurrentUser();
+}
+function ownsDocument(req, documentId) {
+  const user = getAuthUser(req);
+  return storage.getDocuments(user.id).some((doc) => doc.id === documentId && doc.userId === user.id);
 }
 function sanitizeUser(user) {
   if (!user) return user;
@@ -2807,6 +2873,9 @@ app.get("/api/auth/me", (req, res) => {
   res.json({ success: true, user: sanitizeUser(user), isAuthenticated: true });
 });
 app.get("/api/auth/users", (_req, res) => {
+  if (process.env.DATABASE_URL && getAuthUser(_req).role !== "faculty") {
+    return res.status(403).json({ success: false, error: "Administrator access required." });
+  }
   const users = storage.getUsers().map(sanitizeUser);
   res.json({ success: true, users });
 });
@@ -3026,6 +3095,9 @@ app.post("/api/documents/text", async (req, res) => {
 });
 app.delete("/api/documents/:id", (req, res) => {
   const { id } = req.params;
+  if (!ownsDocument(req, id)) {
+    return res.status(404).json({ success: false, error: "Document not found." });
+  }
   storage.removeDocument(id);
   vectorStore.removeDocument(id);
   res.json({ success: true, message: `Document ${id} and associated chunks deleted.` });
@@ -3079,13 +3151,15 @@ app.post("/api/tutor/ask", async (req, res) => {
   try {
     const user = getAuthUser(req);
     const { question, documentIdFilter, preferredProvider } = req.body;
+    if (documentIdFilter && !ownsDocument(req, documentIdFilter)) return res.status(404).json({ success: false, error: "Document not found." });
+    const targetDocumentId = documentIdFilter || storage.getDocuments(user.id).find((doc) => doc.userId === user.id)?.id;
     const effectiveGeminiKey = req.headers["x-gemini-key"] || req.body?.geminiApiKey || user?.geminiApiKey;
     const effectiveProvider = req.headers["x-preferred-provider"] || preferredProvider || "gemini";
     if (!question || question.trim().length === 0) {
       return res.status(400).json({ success: false, error: "Question is required." });
     }
     const answer = await ragPipeline.answerGroundedQuestion(question, {
-      documentIdFilter,
+      documentIdFilter: targetDocumentId || "__no_document__",
       preferredProvider: effectiveProvider,
       apiKeyOverride: effectiveGeminiKey
     });
@@ -3098,6 +3172,7 @@ app.post("/api/study/summary", async (req, res) => {
   try {
     const user = getAuthUser(req);
     const { documentId } = req.body;
+    if (documentId && !ownsDocument(req, documentId)) return res.status(404).json({ success: false, error: "Document not found." });
     const effectiveGeminiKey = req.headers["x-gemini-key"] || req.body?.geminiApiKey || user?.geminiApiKey;
     const userDocs = storage.getDocuments(user?.id);
     const targetDocId = documentId || (userDocs.length > 0 ? userDocs[0].id : void 0);
@@ -3114,6 +3189,7 @@ app.post("/api/study/flashcards", async (req, res) => {
   try {
     const user = getAuthUser(req);
     const { documentId, count } = req.body;
+    if (documentId && !ownsDocument(req, documentId)) return res.status(404).json({ success: false, error: "Document not found." });
     const effectiveGeminiKey = req.headers["x-gemini-key"] || req.body?.geminiApiKey || user?.geminiApiKey;
     const userDocs = storage.getDocuments(user?.id);
     const targetDocId = documentId || (userDocs.length > 0 ? userDocs[0].id : void 0);
@@ -3130,8 +3206,10 @@ app.post("/api/study/quiz", async (req, res) => {
   try {
     const user = getAuthUser(req);
     const { documentId, count } = req.body;
+    if (documentId && !ownsDocument(req, documentId)) return res.status(404).json({ success: false, error: "Document not found." });
     const effectiveGeminiKey = req.headers["x-gemini-key"] || req.body?.geminiApiKey || user?.geminiApiKey;
-    const questions = await studyMaterialService.generateQuiz(documentId, count || 5, effectiveGeminiKey);
+    const targetDocumentId = documentId || storage.getDocuments(user.id).find((doc) => doc.userId === user.id)?.id;
+    const questions = await studyMaterialService.generateQuiz(targetDocumentId || "__no_document__", count || 5, effectiveGeminiKey);
     res.json({ success: true, data: questions });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -3161,10 +3239,12 @@ app.post("/api/models/compare", async (req, res) => {
   try {
     const user = getAuthUser(req);
     const { question, documentIdFilter } = req.body;
+    if (documentIdFilter && !ownsDocument(req, documentIdFilter)) return res.status(404).json({ success: false, error: "Document not found." });
+    const targetDocumentId = documentIdFilter || storage.getDocuments(user.id).find((doc) => doc.userId === user.id)?.id;
     if (!question) {
       return res.status(400).json({ success: false, error: "Question is required for comparison." });
     }
-    const comparison = await comparisonService.compareModels(question, documentIdFilter, {
+    const comparison = await comparisonService.compareModels(question, targetDocumentId || "__no_document__", {
       gemini: user.geminiApiKey,
       groq: user.groqApiKey
     });
